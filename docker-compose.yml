@@ -24,6 +24,8 @@ services:
       - db
     environment:
       DATABASE_URL: mysql://user:password@db:3306/cinema
+    ports:
+      - "8080:8080"
     stdin_open: true
     tty: true
     networks:
