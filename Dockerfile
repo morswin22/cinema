@@ -1,5 +1,5 @@
 # Use the latest stable Rust image
-FROM rust:1.82 as builder
+FROM rust:1.86 as builder
 
 # Install system dependencies for MariaDB
 RUN apt-get update && apt-get install -y \

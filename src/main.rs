@@ -22,7 +22,7 @@ async fn main() -> Result<(), Error> {
         .layer(TraceLayer::new_for_http());
 
     // TODO: In a real application you would most likely read the configuration from a config file.
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:8080")
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
         .await
         .map_err(Error::Bind)?;
 
