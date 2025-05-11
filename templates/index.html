@@ -1,0 +1,40 @@
+{% extends "_layout.html" %}
+
+{%- block title -%}
+    Hello!
+{%- endblock -%}
+
+{%- block content -%}
+    <h1>
+        Hello!
+    </h1>
+    <form
+        method="GET"
+        action="/greet-me.html"
+        autocomplete="off"
+    >
+        <p>
+            I would like to say <em>hello</em>. {#-~#}
+            Would you please tell me your name?
+        </p>
+        <p>
+            <label>
+                My name is
+                <input
+                    type="text"
+                    value="{{name}}"
+                    name="name"
+                    required
+                    style="width: 10em"
+                />
+            </label>
+        </p>
+        <p>
+            <label>
+                <button type="submit">
+                    Greet me, then!
+                </button>
+            </label>
+        </p>
+    </form>
+{%- endblock -%}
