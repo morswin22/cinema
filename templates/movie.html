@@ -1,0 +1,16 @@
+{% extends "_layout.html" %}
+
+{%- block title -%}
+    {{ movie.title }}
+{%- endblock -%}
+
+{%- block content -%}
+    <h1>
+        {{ movie.title }}
+    </h1>
+
+    <img src="https://placehold.co/200x300" alt="{{ movie.title }}" style="border-radius: 4px;">
+
+    <p>{{ movie.year }}</p>
+    <p>{{ movie.director }}</p>
+{%- endblock -%}

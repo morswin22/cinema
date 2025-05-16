@@ -18,4 +18,4 @@ diesel migration run
 diesel print-schema
 
 # Keep container alive or run your app here
-cargo run
+cargo run --bin Cinema

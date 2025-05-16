@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-diesel = { version = "2.1.0", features = ["mysql", "chrono"] }
+diesel = { version = "2.1.0", features = ["mysql", "chrono", "r2d2"] }
 dotenvy = "0.15"
 axum = { version = "0.8.4", features = ["macros"] }
 tokio = { version = "1.0", features = ["full", "macros", "rt-multi-thread"] }
@@ -18,3 +18,4 @@ displaydoc = "0.2.5"
 thiserror = "2.0.12"
 pretty-error-debug = "0.3.1"
 chrono = "0.4.41"
+r2d2 = "0.8"

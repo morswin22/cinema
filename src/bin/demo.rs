@@ -8,13 +8,13 @@ fn main() {
 
     let connection = &mut establish_connection();
 
-    create_movie(connection, NewMovie {
+    let movie_id = create_movie(connection, NewMovie {
         title: "Inception",
         year: 2010,
         director: "Christopher Nolan",
     });
 
-    let inserted: Movie = movies.order(id.desc()).first(connection).unwrap();
+    let inserted: Movie = movies.find(movie_id).first(connection).unwrap();
     println!("{}", inserted.title);
 
     let results = movies
