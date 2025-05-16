@@ -17,3 +17,4 @@ tower-http = { version = "0.6.4", features = ["trace"] }
 displaydoc = "0.2.5"
 thiserror = "2.0.12"
 pretty-error-debug = "0.3.1"
+chrono = "0.4.41"

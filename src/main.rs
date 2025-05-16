@@ -1,3 +1,6 @@
+mod models;
+mod schema;
+
 use askama::Template;
 use axum::extract::{Path, Query};
 use axum::http::StatusCode;
