@@ -1,25 +1,49 @@
-{% extends "_layout.html" %}
-
-{%- block title -%}
-    {%- match err -%}
-        {% when AppError::NotFound -%} 404: Not Found
-        {% else -%} 500: Internal Server Error
-    {%- endmatch -%}
-{%- endblock -%}
-
-{%- block content -%}
-    <h1>
-        {%- match err -%}
-            {% when AppError::NotFound -%} 404: Not Found
-            {% else -%} 500: Internal Server Error
-        {%- endmatch -%}
-    </h1>
-
-    {%- match err -%}
-        {% when AppError::NotFound -%}
-        {% when AppError::Render(err) -%}
-            <pre>{{ err }}</pre>
-    {%- endmatch -%}
-
-    <h2><a href="/">Back to the first page.</a></h2>
-{%- endblock -%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+        h1 {
+            color: #ef4444; /* Red-500 */
+            margin-bottom: 1rem;
+        }
+        pre {
+            background-color: #fef2f2; /* Red-50 */
+            border: 1px solid #fca5a5; /* Red-300 */
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            color: #b91c1c; /* Red-700 */
+            font-family: monospace;
+            text-align: left;
+        }
+    </style>
+</head>
+<body class="p-4">
+<div class="container">
+    <h1 class="text-3xl font-bold mb-4">Error Occurred!</h1>
+    <p class="text-lg mb-6">Something went wrong while processing your request.</p>
+    <p class="text-xl font-semibold mb-4">{{ error_message }}</p> {# Display the pre-formatted error message #}
+    <pre class="whitespace-pre-wrap">{{ debug_info }}</pre> {# Display the pre-formatted debug info #}
+    <a href="/" class="btn btn-primary mt-6">Go to Home</a>
+</div>
+</body>
+</html>

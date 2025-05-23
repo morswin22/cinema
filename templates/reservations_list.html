@@ -1,0 +1,75 @@
+{% extends "_layout.html" %}
+
+{%- block content -%}
+<div id="reservations-list" class="overflow-x-auto shadow-md rounded-lg">
+    <div class="mb-6 flex justify-between items-center p-4 bg-white rounded-t-lg">
+        <h2 class="text-2xl font-semibold">Reservations</h2>
+        <button class="btn btn-primary"
+                hx-get="/reservations/new"
+                hx-target="#reservation-form-container"
+                hx-swap="outerHTML">
+            Make New Reservation
+        </button>
+    </div>
+
+    <div id="reservation-form-container" class="mb-8 p-6 bg-gray-50 border border-gray-200 rounded-lg hidden">
+    </div>
+
+    <form hx-post="/reservations/bulk_delete" hx-target="#reservations-list" hx-swap="outerHTML" class="p-4 bg-white rounded-b-lg">
+        <div class="flex items-center space-x-4 mb-4">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to cancel selected reservations?');">
+                Cancel Selected Reservations
+            </button>
+        </div>
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+            <tr>
+                <th class="table-header">
+                    <input type="checkbox" id="select-all-reservations" onchange="document.querySelectorAll('input[name=\'reservation_ids[]\']').forEach(cb => cb.checked = this.checked);">
+                </th>
+                <th class="table-header">ID</th>
+                <th class="table-header">User Email</th>
+                <th class="table-header">Movie Title</th>
+                <th class="table-header">Room Label</th>
+                <th class="table-header">Schedule Date</th>
+                <th class="table-header">Actions</th>
+            </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+            {% for reservation in reservations %}
+            <tr class="hover:bg-gray-100">
+                <td class="table-cell">
+                    <input type="checkbox" name="reservation_ids[]" value="{{ reservation.reservation_id }}">
+                </td>
+                <td class="table-cell">{{ reservation.reservation_id }}</td>
+                <td class="table-cell">{{ reservation.user_email }}</td>
+                <td class="table-cell">{{ reservation.movie_title }}</td>
+                <td class="table-cell">{{ reservation.room_label }}</td>
+                <td class="table-cell">{{ reservation.schedule_date }}</td>
+                <td class="table-cell">
+                    <button class="btn btn-secondary text-sm mr-2"
+                            hx-get="/reservations/edit/{{ reservation.reservation_id }}"
+                            hx-target="#reservation-form-container"
+                            hx-swap="outerHTML"
+                            hx-on--after-request="document.getElementById('reservation-form-container').classList.remove('hidden');">
+                        Edit
+                    </button>
+                    <button class="btn btn-danger text-sm"
+                            hx-delete="/reservations/{{ reservation.reservation_id }}"
+                            hx-target="#reservations-list"
+                            hx-swap="outerHTML"
+                            onclick="return confirm('Are you sure you want to cancel this reservation?');">
+                        Cancel
+                    </button>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="table-cell text-center text-gray-500">No reservations found.</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </form>
+</div>
+{%- endblock -%}

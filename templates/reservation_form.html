@@ -1,0 +1,70 @@
+{% extends "_layout.html" %}
+
+{%- block content -%}
+<div id="reservation-form-container" class="mb-8 p-6 bg-gray-50 border border-gray-200 rounded-lg">
+  <h2 class="text-xl font-semibold mb-4">
+    {% if let Some(reservation_data) = reservation %} {# Use if let to unwrap the Option #}
+    Edit Reservation #{{ reservation_data.id }}
+    {% else %}
+    Make New Reservation
+    {% endif %}
+  </h2>
+
+  {% if let Some(msg) = error_message %} {# Use if let to unwrap the Option<String> #}
+  <p class="text-red-600 mb-4">{{ msg }}</p>
+  {% endif %}
+
+  <form hx-post="/reservations{% if let Some(reservation_data) = reservation %}/{{ reservation_data.id }}{% endif %}"
+        hx-target="#reservations-list"
+        hx-swap="outerHTML"
+        class="space-y-4">
+    {% if let Some(reservation_data) = reservation %} {# Use if let to unwrap the Option #}
+    <input type="hidden" name="reservation_id" value="{{ reservation_data.id }}">
+    {% endif %}
+
+    <div>
+      <label for="user_id" class="block text-sm font-medium text-gray-700">User:</label>
+      <select id="user_id" name="user_id" class="form-input" required>
+        <option value="">Select a User</option>
+        {% for user in users %}
+        <option value="{{ user.id }}" {% if let Some(reservation_data) = reservation %}{% if reservation_data.user_id == user.id %}selected{% endif %}{% endif %}>
+          {{ user.email }} (ID: {{ user.id }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label for="schedule_id" class="block text-sm font-medium text-gray-700">Schedule:</label>
+      <select id="schedule_id" name="schedule_id" class="form-input" required>
+        <option value="">Select a Schedule</option>
+        {% for schedule_tuple in schedules %}
+        {% let schedule = schedule_tuple.0 %}
+        {% let movie = schedule_tuple.1 %}
+        {% let room = schedule_tuple.2 %}
+        <option value="{{ schedule.id }}" {% if let Some(reservation_data) = reservation %}{% if reservation_data.schedule_id == schedule.id %}selected{% endif %}{% endif %}>
+          {{ movie.title }} ({{ schedule.date }}) in {{ room.label }} (ID: {{ schedule.id }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="flex space-x-4">
+      <button type="submit" class="btn btn-primary">
+        {% if reservation.is_some() %} {# Changed to .is_some() #}
+        Update Reservation
+        {% else %}
+        Create Reservation
+        {% endif %}
+      </button>
+      <button type="button" class="btn btn-secondary"
+              hx-get="/reservations"
+              hx-target="#reservations-list"
+              hx-swap="outerHTML"
+              hx-on--after-request="document.getElementById('reservation-form-container').classList.add('hidden');">
+        Cancel
+      </button>
+    </div>
+  </form>
+</div>
+{%- endblock -%}
