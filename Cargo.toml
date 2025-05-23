@@ -19,3 +19,7 @@ thiserror = "2.0.12"
 pretty-error-debug = "0.3.1"
 chrono = "0.4.41"
 r2d2 = "0.8"
+bcrypt = "0.15"
+validator = { version = "0.16", features = ["derive"] }
+tower-sessions = "0.14.0"
+

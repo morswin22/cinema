@@ -15,6 +15,7 @@ pub fn app_router(pool: Arc<MysqlPool>) -> Router {
         .route("/", get(handlers::index_handler))
         .nest("/movies", movie_routes())
         .nest("/reservations", reservation_routes())
+        .merge(auth_routes())
         .with_state(pool) // Apply the shared pool to the top-level router
 }
 
@@ -24,6 +25,13 @@ fn movie_routes() -> Router<Arc<MysqlPool>> {
     Router::new()
         .route("/", get(movies::movies_handler))
         .route("/{movie_id}", get(movies::movie_handler)) // Corrected path parameter syntax
+}
+
+fn auth_routes() -> Router<Arc<MysqlPool>> {
+    Router::new()
+        .route("/register", get(handlers::auth::show_register).post(handlers::auth::handle_register))
+        .route("/login", get(handlers::auth::show_login).post(handlers::auth::handle_login))
+        .route("/logout", get(handlers::auth::logout))
 }
 
 /// Defines routes related to reservations.

@@ -3,9 +3,10 @@ use chrono::NaiveDateTime;
 use crate::schema::*;
 use serde::{Deserialize, Serialize};
 use diesel::deserialize::QueryableByName; // Import QueryableByName
+use serde;
 
 // User Model
-#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq)]
+#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 #[diesel(table_name = users)]
 #[diesel(check_for_backend(diesel::mysql::Mysql))]
 pub struct User {

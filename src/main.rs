@@ -7,6 +7,7 @@ use axum::{
 };
 use askama::Template;
 use chrono::NaiveDateTime;
+use diesel::result::Error::NotFound;
 use serde::Deserialize;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -20,6 +21,9 @@ use diesel::r2d2::{ConnectionManager, Pool};
 use tower_http::trace::TraceLayer;
 use dotenvy::dotenv;
 use std::env;
+use models::User;
+use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
+use tower_sessions::cookie::time::Duration;
 
 // Import the new modules
 mod db;
@@ -28,9 +32,12 @@ mod schema;
 mod routes; // New: Contains all route definitions
 mod handlers; // New: Contains all handler functions
 mod templates_structs; // New: Contains all Askama template structs
+mod forms;
 
 use db::{establish_connection_pool, MysqlPool}; // Use the pool from db.rs
 use templates_structs::ErrorTemplate; // Import ErrorTemplate from its new location
+
+const SESSION_USER_KEY: &str = "USER";
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -51,10 +58,16 @@ async fn main() -> Result<(), Error> {
         Err(e) => tracing::error!("Failed to create mock data: {:?}", e),
     }
 
+    let session_store = MemoryStore::default();
+    let session_layer = SessionManagerLayer::new(session_store)
+        .with_secure(false)
+        .with_expiry(Expiry::OnInactivity(Duration::hours(3)));
+
     // Build our application with routes from the new `routes` module
     let app = routes::app_router(shared_pool.clone()) // Pass the shared pool to the router builder
         .fallback(|| async { AppError::NotFound })
-        .layer(TraceLayer::new_for_http());
+        .layer(TraceLayer::new_for_http())
+        .layer(session_layer);
     // .with_state(shared_pool); // This call is now handled inside routes::app_router
 
     let listener = TcpListener::bind("0.0.0.0:8080")

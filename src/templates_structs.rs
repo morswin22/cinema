@@ -6,7 +6,9 @@ use crate::AppError; // Import AppError
 // Define the templates
 #[derive(Template)]
 #[template(path = "index.html")]
-pub struct IndexTemplate {}
+pub struct IndexTemplate {
+    pub user_option: Option<User>
+}
 
 #[derive(Template)]
 #[template(path = "reservations_list.html")]

@@ -5,13 +5,20 @@
 {%- endblock -%}
 
 {%- block content -%}
-    <h1>
-        Hello!
-    </h1>
+    {% if let Some(user) = user_option %}
+        <h1>Hello, {{ user.email }}!</h1>
+    {% else %}
+        <h1>Hello, World!</h1>
+    {% endif %}
 
     <div class="flex justify-center">
         <a href="/reservations" class="btn btn-primary">View All Reservations</a>
+        <a href="/movies">Movies</a>
+        {% if let Some(user) = user_option %}
+            <a href="/logout">Logout</a>
+        {% else %}
+            <a href="/login">Login</a>
+            <a href="/register">Register</a>
+        {% endif %}
     </div>
-
-    <a href="/movies">Movies</a>
 {%- endblock -%}
