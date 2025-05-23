@@ -11,6 +11,7 @@ use crate::db::MysqlPool;
 use crate::models::{NewReservation, ReservationDetail, ReservationChangeset};
 use crate::{db, AppError}; // Import db functions and AppError
 use crate::templates_structs::{ReservationsListTemplate, ReservationFormTemplate}; // Import template structs
+use serde_with::{serde_as, OneOrMany};
 
 // Form data structures for HTMX requests (moved here)
 #[derive(Deserialize)]
@@ -25,7 +26,7 @@ pub struct UpdateReservationForm {
     pub schedule_id: Option<i32>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct DeleteMultipleReservationsForm {
     #[serde(rename = "reservation_ids[]")]
     pub reservation_ids: Vec<i32>,
@@ -166,6 +167,7 @@ pub async fn delete_reservation(
     }
 }
 
+//TODO: fix delete_multiple_reservations
 /// Handler to delete multiple reservations from form data.
 pub async fn delete_multiple_reservations(
     State(pool): State<Arc<MysqlPool>>,
@@ -178,12 +180,11 @@ pub async fn delete_multiple_reservations(
     }
 
     match db::delete_multiple_reservations(&mut conn, form.reservation_ids) {
-        Ok(_) => {
-            Ok(list_reservations(State(pool)).await?.into_response())
-        }
+        Ok(_) => Ok(list_reservations(State(pool)).await?.into_response()),
         Err(e) => {
             tracing::error!("Failed to delete multiple reservations: {:?}", e);
             Err(AppError::Database(e))
         }
     }
 }
+
