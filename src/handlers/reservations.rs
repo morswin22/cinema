@@ -27,9 +27,8 @@ pub struct UpdateReservationForm {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct DeleteMultipleReservationsForm {
-    #[serde(rename = "reservation_ids[]")]
-    pub reservation_ids: Vec<i32>,
+pub struct BulkDeleteFormData {
+    pub reservation_ids: String,
 }
 
 /// Handler to list reservations, typically for HTMX partial updates.
@@ -60,6 +59,7 @@ pub async fn show_create_reservation_form(State(pool): State<Arc<MysqlPool>>) ->
     Ok(Html(template.render()?))
 }
 
+//TODO: check capacity of rooms for reseracation and update of reservatiaon
 /// Handler to create a new reservation from form data.
 pub async fn create_reservation(
     State(pool): State<Arc<MysqlPool>>,
@@ -167,19 +167,29 @@ pub async fn delete_reservation(
     }
 }
 
-//TODO: fix delete_multiple_reservations
 /// Handler to delete multiple reservations from form data.
 pub async fn delete_multiple_reservations(
     State(pool): State<Arc<MysqlPool>>,
-    Form(form): Form<DeleteMultipleReservationsForm>,
+    Form(form): Form<BulkDeleteFormData>,
 ) -> Result<Response, AppError> {
+    let ids: Result<Vec<i32>, _> = form
+        .reservation_ids
+        .split(',')
+        .map(str::parse::<i32>)
+        .collect();
+
+    let reservation_ids = match ids {
+        Ok(v) => v,
+        Err(_) => return Err(AppError::BadRequest("Invalid reservation ID format.".into())),
+    };
+
     let mut conn = pool.get().map_err(|e| AppError::PoolError(e.to_string()))?;
 
-    if form.reservation_ids.is_empty() {
+    if reservation_ids.is_empty() {
         return Err(AppError::BadRequest("No reservations selected for deletion.".to_string()));
     }
 
-    match db::delete_multiple_reservations(&mut conn, form.reservation_ids) {
+    match db::delete_multiple_reservations(&mut conn, reservation_ids) {
         Ok(_) => Ok(list_reservations(State(pool)).await?.into_response()),
         Err(e) => {
             tracing::error!("Failed to delete multiple reservations: {:?}", e);

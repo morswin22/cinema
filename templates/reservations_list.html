@@ -16,8 +16,9 @@
     </div>
 
     <form hx-post="/reservations/bulk_delete" hx-target="#reservations-list" hx-swap="outerHTML" class="p-4 bg-white rounded-b-lg">
+        <input type="hidden" name="reservation_ids" id="bulk-reservation-ids">
         <div class="flex items-center space-x-4 mb-4">
-            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to cancel selected reservations?');">
+            <button type="submit" class="btn btn-danger" onclick="return prepareBulkDelete();">
                 Cancel Selected Reservations
             </button>
         </div>
@@ -25,7 +26,7 @@
             <thead class="bg-gray-50">
             <tr>
                 <th class="table-header">
-                    <input type="checkbox" id="select-all-reservations" onchange="document.querySelectorAll('input[name=\'reservation_ids[]\']').forEach(cb => cb.checked = this.checked);">
+                    <input type="checkbox" id="select-all-reservations" onchange="document.querySelectorAll('input[class=\'reservation_ids\']').forEach(cb => cb.checked = this.checked);">
                 </th>
                 <th class="table-header">ID</th>
                 <th class="table-header">User Email</th>
@@ -39,7 +40,7 @@
             {% for reservation in reservations %}
             <tr class="hover:bg-gray-100">
                 <td class="table-cell">
-                    <input type="checkbox" name="reservation_ids[]" value="{{ reservation.reservation_id }}">
+                    <input type="checkbox" class="reservation_ids" value="{{ reservation.reservation_id }}">
                 </td>
                 <td class="table-cell">{{ reservation.reservation_id }}</td>
                 <td class="table-cell">{{ reservation.user_email }}</td>
@@ -72,4 +73,19 @@
         </table>
     </form>
 </div>
+<script>
+    function prepareBulkDelete() {
+        const selected = Array.from(document.querySelectorAll("input[class='reservation_ids']:checked"))
+            .map(cb => cb.value)
+            .join(",");
+
+        if (!selected) {
+            alert("Please select reservations to delete.");
+            return false;
+        }
+
+        document.getElementById("bulk-reservation-ids").value = selected;
+        return confirm("Are you sure you want to cancel selected reservations?");
+    }
+</script>
 {%- endblock -%}
