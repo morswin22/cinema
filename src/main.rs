@@ -33,6 +33,7 @@ mod routes; // New: Contains all route definitions
 mod handlers; // New: Contains all handler functions
 mod templates_structs; // New: Contains all Askama template structs
 mod forms;
+mod extractors;
 
 use db::{establish_connection_pool, MysqlPool}; // Use the pool from db.rs
 use templates_structs::ErrorTemplate; // Import ErrorTemplate from its new location
@@ -105,6 +106,8 @@ pub enum AppError { // Made public for use in handlers
     UserLoginError,
     /// User register error
     UserRegisterError,
+    /// UnauthorizedError
+    UnauthorizedError
 }
 
 /// This is your error handler
@@ -118,6 +121,7 @@ impl IntoResponse for AppError {
             AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
             AppError::UserLoginError => StatusCode::IM_A_TEAPOT,
             AppError::UserRegisterError => StatusCode::IM_A_TEAPOT,
+            AppError::UnauthorizedError => StatusCode::UNAUTHORIZED
         };
         let tmpl = ErrorTemplate {
             error_message: self.to_string(),

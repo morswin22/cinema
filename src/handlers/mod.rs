@@ -9,6 +9,7 @@ pub mod auth;
 // Given the refactoring, it's better to move it here.
 use axum::response::{Html, IntoResponse};
 use askama::Template;
+use crate::extractors::session_user::OptionalUser;
 use crate::templates_structs::IndexTemplate;
 use crate::AppError; // Import AppError
 use tower_sessions::Session;
@@ -16,10 +17,10 @@ use crate::models::User;
 use crate::SESSION_USER_KEY;
 
 pub async fn index_handler(
-    session: Session
+    OptionalUser(user_option): OptionalUser,
 ) -> Result<impl IntoResponse, AppError> {
     let template = IndexTemplate {
-        user_option: session.get(SESSION_USER_KEY).await.unwrap().unwrap_or(None)
+        user_option
     };
     Ok(Html(template.render()?))
 }
