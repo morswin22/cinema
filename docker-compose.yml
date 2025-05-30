@@ -17,6 +17,10 @@ services:
       timeout: 5s
     networks:
       - mynetwork
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   app:
     build: .
@@ -30,6 +34,10 @@ services:
     tty: true
     networks:
       - mynetwork
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
 networks:
   mynetwork:
