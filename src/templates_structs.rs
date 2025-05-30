@@ -21,7 +21,6 @@ pub struct ReservationsListTemplate {
 #[template(path = "reservation_form.html")]
 pub struct ReservationFormTemplate {
     pub reservation: Option<Reservation>,
-    pub users: Vec<User>,
     pub schedules: Vec<ScheduleDisplayInfo>,
 }
 

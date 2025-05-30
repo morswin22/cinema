@@ -1,5 +1,6 @@
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
+use diesel::sql_types::Integer;
 use diesel::MysqlConnection;
 use dotenvy::dotenv;
 use std::env;
@@ -203,6 +204,7 @@ pub fn get_reservations_by_user_id(
 /// Retrieves all reservations with full details (who made it, movie, room, schedule).
 pub fn get_reservations_with_details(
     conn: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
+    user_id: i32,
 ) -> QueryResult<Vec<ReservationDetail>> {
     // Use a raw SQL query with explicit aliases for QueryableByName
     diesel::sql_query(
@@ -216,8 +218,10 @@ pub fn get_reservations_with_details(
         INNER JOIN users u ON r.user_id = u.id
         INNER JOIN schedule s ON r.schedule_id = s.id
         INNER JOIN movies m ON s.movie_id = m.id
-        INNER JOIN rooms ro ON s.room_id = ro.id"
+        INNER JOIN rooms ro ON s.room_id = ro.id
+        WHERE u.id = ?"
     )
+        .bind::<Integer, _>(user_id)
         .load::<ReservationDetail>(conn)
 }
 
@@ -237,6 +241,7 @@ pub fn get_reservations_count_for_schedule(
 /// Returns the number of deleted rows (should be 1 if successful).
 pub fn delete_reservation(conn: &mut MysqlConnection, res_id: i32) -> QueryResult<usize> {
     use crate::schema::reservation::dsl::*;
+    // TODO: only delete reservations of the currently logged in user
     diesel::delete(reservation.filter(id.eq(res_id))).execute(conn)
 }
 
@@ -247,6 +252,7 @@ pub fn delete_multiple_reservations(
     res_ids: Vec<i32>,
 ) -> QueryResult<usize> {
     use crate::schema::reservation::dsl::*;
+    // TODO: only delete reservations of the currently logged in user
     diesel::delete(reservation.filter(id.eq_any(res_ids))).execute(conn)
 }
 
