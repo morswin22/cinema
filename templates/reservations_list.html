@@ -4,6 +4,11 @@
 <div id="reservations-list" class="overflow-x-auto shadow-md rounded-lg">
     <div class="mb-6 flex justify-between items-center p-4 bg-white rounded-t-lg">
         <h2 class="text-2xl font-semibold">Reservations</h2>
+
+        {% if let Some(msg) = error_message %}
+            <p class="text-red-600 mb-4">{{ msg }}</p>
+        {% endif %}
+
         <button class="btn btn-primary"
                 hx-get="/reservations/new"
                 hx-target="#reservation-form-container"

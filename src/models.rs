@@ -6,7 +6,7 @@ use diesel::deserialize::QueryableByName; // Import QueryableByName
 use serde;
 
 // User Model
-#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
 #[diesel(table_name = users)]
 #[diesel(check_for_backend(diesel::mysql::Mysql))]
 pub struct User {
@@ -24,7 +24,7 @@ pub struct NewUser<'a> {
 }
 
 // Movie Model
-#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq)]
+#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq, Clone)]
 #[diesel(table_name = movies)]
 #[diesel(check_for_backend(diesel::mysql::Mysql))]
 pub struct Movie {
@@ -44,7 +44,7 @@ pub struct NewMovie<'a> {
 }
 
 // Room Model
-#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq)]
+#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq, Clone)]
 #[diesel(table_name = rooms)]
 #[diesel(check_for_backend(diesel::mysql::Mysql))]
 pub struct Room {
@@ -62,7 +62,7 @@ pub struct NewRoom<'a> {
 }
 
 // Schedule Model
-#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq)]
+#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq, Clone)]
 #[diesel(table_name = schedule)]
 #[diesel(check_for_backend(diesel::mysql::Mysql))]
 pub struct Schedule {
@@ -131,4 +131,12 @@ pub struct ReservationDetail {
 pub struct LastInsertId {
     #[diesel(sql_type = diesel::sql_types::Bigint)] // Specify the SQL type
     pub id: i64, // Use i64 as LAST_INSERT_ID() returns BIGINT
+}
+
+#[derive(Debug)]
+pub struct ScheduleDisplayInfo {
+    pub schedule: Schedule,
+    pub movie: Movie,
+    pub room: Room,
+    pub available_seats: i32,
 }

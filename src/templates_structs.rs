@@ -1,6 +1,6 @@
 use askama::Template;
 use chrono::NaiveDateTime;
-use crate::models::{Movie, ReservationDetail, Reservation, Room, Schedule, User};
+use crate::models::{Movie, ReservationDetail, Reservation, ScheduleDisplayInfo, User};
 use crate::AppError; // Import AppError
 
 // Define the templates
@@ -14,6 +14,7 @@ pub struct IndexTemplate {
 #[template(path = "reservations_list.html")]
 pub struct ReservationsListTemplate {
     pub reservations: Vec<ReservationDetail>,
+    pub error_message: Option<String>,
 }
 
 #[derive(Template)]
@@ -21,8 +22,7 @@ pub struct ReservationsListTemplate {
 pub struct ReservationFormTemplate {
     pub reservation: Option<Reservation>,
     pub users: Vec<User>,
-    pub schedules: Vec<(Schedule, Movie, Room)>,
-    pub error_message: Option<String>,
+    pub schedules: Vec<ScheduleDisplayInfo>,
 }
 
 #[derive(Template)]

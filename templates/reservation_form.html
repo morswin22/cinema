@@ -10,10 +10,6 @@
     {% endif %}
   </h2>
 
-  {% if let Some(msg) = error_message %} {# Use if let to unwrap the Option<String> #}
-  <p class="text-red-600 mb-4">{{ msg }}</p>
-  {% endif %}
-
   <form hx-post="/reservations{% if let Some(reservation_data) = reservation %}/{{ reservation_data.id }}{% endif %}"
         hx-target="#reservations-list"
         hx-swap="outerHTML"
@@ -38,12 +34,11 @@
       <label for="schedule_id" class="block text-sm font-medium text-gray-700">Schedule:</label>
       <select id="schedule_id" name="schedule_id" class="form-input" required>
         <option value="">Select a Schedule</option>
-        {% for schedule_tuple in schedules %}
-        {% let schedule = schedule_tuple.0 %}
-        {% let movie = schedule_tuple.1 %}
-        {% let room = schedule_tuple.2 %}
-        <option value="{{ schedule.id }}" {% if let Some(reservation_data) = reservation %}{% if reservation_data.schedule_id == schedule.id %}selected{% endif %}{% endif %}>
-          {{ movie.title }} ({{ schedule.date }}) in {{ room.label }} (ID: {{ schedule.id }})
+        {% for schedule_info in schedules %} {# Iterate over ScheduleDisplayInfo #}
+        <option value="{{ schedule_info.schedule.id }}"
+                {% if let Some(reservation_data) = reservation %}{% if reservation_data.schedule_id == schedule_info.schedule.id %}selected{% endif %}{% endif %}>
+          {{ schedule_info.movie.title }} ({{ schedule_info.schedule.date }}) in {{ schedule_info.room.label }}
+          (Available: {{ schedule_info.available_seats }}/{{ schedule_info.room.capacity }})
         </option>
         {% endfor %}
       </select>

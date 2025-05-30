@@ -202,7 +202,7 @@ pub fn get_reservations_by_user_id(
 
 /// Retrieves all reservations with full details (who made it, movie, room, schedule).
 pub fn get_reservations_with_details(
-    conn: &mut MysqlConnection,
+    conn: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
 ) -> QueryResult<Vec<ReservationDetail>> {
     // Use a raw SQL query with explicit aliases for QueryableByName
     diesel::sql_query(
@@ -219,6 +219,18 @@ pub fn get_reservations_with_details(
         INNER JOIN rooms ro ON s.room_id = ro.id"
     )
         .load::<ReservationDetail>(conn)
+}
+
+/// Counts the number of existing reservations for a given schedule.
+pub fn get_reservations_count_for_schedule(
+    conn: &mut MysqlConnection,
+    schedule_id_param: i32,
+) -> QueryResult<i64> {
+    use crate::schema::reservation::dsl::*;
+    reservation
+        .filter(schedule_id.eq(schedule_id_param))
+        .count()
+        .get_result(conn)
 }
 
 /// Deletes a single reservation by its ID.
@@ -262,10 +274,12 @@ pub fn create_mock_data(conn: &mut MysqlConnection) -> QueryResult<()> {
     // Create Rooms
     let room1 = NewRoom { capacity: 100, label: "Screen 1" };
     let room2 = NewRoom { capacity: 50, label: "Screen 2" };
+    let room3 = NewRoom { capacity: 1, label: "Screen 3" };
 
     let room1_id = create_room(conn, room1)?;
     let room2_id = create_room(conn, room2)?;
-    info!("Created rooms with IDs: {}, {}", room1_id, room2_id);
+    let room3_id = create_room(conn, room3)?;
+    info!("Created rooms with IDs: {}, {}, {}", room1_id, room2_id, room3_id);
 
     // Create Schedules
     let schedule1 = NewSchedule {
@@ -284,10 +298,17 @@ pub fn create_mock_data(conn: &mut MysqlConnection) -> QueryResult<()> {
         date: NaiveDateTime::parse_from_str("2025-06-02 14:00:00", "%Y-%m-%d %H:%M:%S").unwrap(),
     };
 
+    let schedule4 = NewSchedule {
+        movie_id: movie1_id,
+        room_id: room3_id,
+        date: NaiveDateTime::parse_from_str("2025-06-02 15:00:00", "%Y-%m-%d %H:%M:%S").unwrap(),
+    };
+
     let schedule1_id = create_schedule(conn, schedule1)?;
     let schedule2_id = create_schedule(conn, schedule2)?;
     let schedule3_id = create_schedule(conn, schedule3)?;
-    info!("Created schedules with IDs: {}, {}, {}", schedule1_id, schedule2_id, schedule3_id);
+    let schedule4_id = create_schedule(conn, schedule4)?;
+    info!("Created schedules with IDs: {}, {}, {}, {}", schedule1_id, schedule2_id, schedule3_id, schedule4_id);
 
     // Create Reservations (optional, linking users and schedules)
     let reservation1 = NewReservation {

@@ -3,6 +3,7 @@ use axum::{
     Router,
 };
 use std::sync::Arc;
+use axum::extract::State;
 use crate::db::MysqlPool;
 use crate::handlers::{movies, reservations}; // Import handler modules
 use crate::handlers; // Import handlers module to access index_handler
@@ -38,7 +39,7 @@ fn auth_routes() -> Router<Arc<MysqlPool>> {
 // reservation_routes now explicitly returns Router<Arc<MysqlPool>>
 fn reservation_routes() -> Router<Arc<MysqlPool>> {
     Router::new()
-        .route("/", get(reservations::list_reservations))
+        .route("/", get(reservations::list_reservations_handler))
         .route("/new", get(reservations::show_create_reservation_form))
         .route("/", post(reservations::create_reservation))
         .route("/edit/{id}", get(reservations::show_update_reservation_form))
