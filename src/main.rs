@@ -101,6 +101,10 @@ pub enum AppError { // Made public for use in handlers
     PoolError(String),
     /// Bad Request: {0}
     BadRequest(String),
+    /// User login error
+    UserLoginError,
+    /// User register error
+    UserRegisterError,
 }
 
 /// This is your error handler
@@ -112,6 +116,8 @@ impl IntoResponse for AppError {
             AppError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::PoolError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            AppError::UserLoginError => StatusCode::IM_A_TEAPOT,
+            AppError::UserRegisterError => StatusCode::IM_A_TEAPOT,
         };
         let tmpl = ErrorTemplate {
             error_message: self.to_string(),

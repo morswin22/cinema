@@ -2,13 +2,15 @@ use axum::{
     extract::State,
     response::{Html, IntoResponse, Redirect, Response},
     Form,
+    http::StatusCode,
 };
+use r2d2::PooledConnection;
 use tower_sessions::Session;
 use axum::extract::Extension;
 use bcrypt::{hash, verify, DEFAULT_COST};
-use diesel::prelude::*;
+use diesel::{prelude::*, r2d2::ConnectionManager};
 use askama::Template;
-use htmxtools::response::HxPushUrl;
+use htmxtools::response::HxRedirect;
 use axum::http::Uri;
 use std::sync::Arc;
 
@@ -23,9 +25,11 @@ pub async fn show_register() -> Result<impl IntoResponse, AppError> {
     #[derive(Debug, Template)]
     #[template(path = "register.html")]
     struct Tmpl {
+        register_error: Option<diesel::result::Error>
     }
 
     let template = Tmpl {
+        register_error: None
     };
     Ok(Html(template.render()?))
 }
@@ -33,7 +37,7 @@ pub async fn show_register() -> Result<impl IntoResponse, AppError> {
 pub async fn handle_register(
     State(pool): State<Arc<MysqlPool>>,
     Form(form): Form<RegisterForm>,
-) -> Result<impl IntoResponse, AppError> {
+) -> Result<Response, AppError> {
     let mut conn = pool.get().map_err(|e| AppError::PoolError(e.to_string()))?;
     
     let hashed_password = hash(form.password, DEFAULT_COST).unwrap();
@@ -42,22 +46,36 @@ pub async fn handle_register(
         password: &hashed_password,
     };
 
-    diesel::insert_into(users)
+    let result = diesel::insert_into(users)
         .values(&new_user)
-        .execute(&mut conn).unwrap();
+        .execute(&mut conn);
 
-    // TODO: handle register errors
+    match result {
+        Ok(_) => Ok(HxRedirect::from(Uri::from_static("/login")).into_response()),
+        Err(error) => {
+            #[derive(Debug, Template)]
+            #[template(path = "register_form.html")]
+            struct Tmpl {
+                register_error: Option<diesel::result::Error>
+            }
 
-    Ok(HxPushUrl::url(Uri::from_static("/login")))
+            let template = Tmpl {
+                register_error: Some(error)
+            };
+            Ok(Html(template.render()?).into_response())
+        }
+    }
 }
 
 pub async fn show_login() -> Result<impl IntoResponse, AppError> {
     #[derive(Debug, Template)]
     #[template(path = "login.html")]
     struct Tmpl {
+        login_error: Option<AppError>
     }
 
     let template = Tmpl {
+        login_error: None
     };
     Ok(Html(template.render()?))
 }
@@ -69,22 +87,30 @@ pub async fn handle_login(
 ) -> Result<Response, AppError> {
     let mut conn = pool.get().map_err(|e| AppError::PoolError(e.to_string()))?;
     
-    let user = users
-        .filter(email.eq(&form.email))
-        .first::<User>(&mut conn).unwrap();
+    let result = (|| {
+        let user = users
+            .filter(email.eq(&form.email))
+            .first::<User>(&mut conn).map_err(|_| AppError::UserLoginError)?;
 
-    if verify(form.password, &user.password).unwrap() {
+        if !verify(form.password, &user.password).unwrap_or(false) {
+            return Err(AppError::UserLoginError);
+        }
+
+        Ok(user)
+    })();
+
+    if let Ok(user) = result { 
         session.insert(SESSION_USER_KEY, user).await.unwrap();
-        return Ok(HxPushUrl::url(Uri::from_static("/")).into_response());
+        return Ok(HxRedirect::from(Uri::from_static("/")).into_response());
     } else {
         #[derive(Debug, Template)]
         #[template(path = "login_form.html")]
         struct Tmpl {
+            login_error: Option<AppError>
         }
 
-        // TODO: handle login errors
-
         let template = Tmpl {
+            login_error: Some(AppError::UserLoginError)
         };
         Ok(Html(template.render()?).into_response())
     }

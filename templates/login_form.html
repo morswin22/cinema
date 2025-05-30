@@ -2,4 +2,7 @@
     <input type="text" name="email" required placeholder="Email">
     <input type="password" name="password" required placeholder="Password">
     <button type="submit">Login</button>
+    {% if let Some(error) = login_error %}
+        <p>Bad login credentials</p>
+    {% endif %}
 </form>

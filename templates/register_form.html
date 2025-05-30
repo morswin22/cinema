@@ -3,4 +3,7 @@
     <input type="password" name="password" required placeholder="Password">
     <input type="password" name="password_confirmation" required placeholder="Confirm Password">
     <button type="submit">Register</button>
+    {% if let Some(error) = register_error %}
+        <p>Unable to register new user</p>
+    {% endif %}
 </form>
