@@ -64,7 +64,7 @@
                             hx-delete="/reservations/{{ reservation.reservation_id }}"
                             hx-target="#reservations-list"
                             hx-swap="outerHTML"
-                            onclick="return confirm('Are you sure you want to cancel this reservation?');">
+                            hx-confirm="Are you sure you want to cancel this reservation?">
                         Cancel
                     </button>
                 </td>
