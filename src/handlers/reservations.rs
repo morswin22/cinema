@@ -78,6 +78,7 @@ pub async fn show_create_reservation_form(State(pool): State<Arc<MysqlPool>>) ->
 }
 
 /// Handler to create a new reservation from form data.
+/// TODO: check if user already occupied the schedule
 pub async fn create_reservation(
     State(pool): State<Arc<MysqlPool>>,
     Form(form): Form<CreateReservationForm>,
