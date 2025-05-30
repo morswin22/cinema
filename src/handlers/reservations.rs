@@ -126,18 +126,6 @@ pub async fn create_reservation(
         }
         Err(e) => {
             tracing::error!("Failed to create reservation: {:?}", e);
-            let users = db::get_all_users(&mut conn).unwrap_or_default();
-            let schedules_with_details = db::get_schedules_with_details(&mut conn).unwrap_or_default();
-            let mut schedules_display_info: Vec<ScheduleDisplayInfo> = Vec::new();
-            for (s, m, r) in schedules_with_details {
-                let count = db::get_reservations_count_for_schedule(&mut conn, s.id).unwrap_or(0);
-                schedules_display_info.push(ScheduleDisplayInfo {
-                    schedule: s.clone(), // Clone to avoid move error
-                    movie: m.clone(),    // Clone to avoid move error
-                    room: r.clone(),     // Clone to avoid move error
-                    available_seats: r.capacity - count as i32
-                });
-            }
             let error_message = Some(format!("Failed to create reservation: {}", e));
             Ok(list_reservations(State(pool), error_message).into_response())
         }
@@ -213,25 +201,6 @@ pub async fn update_reservation(
             .map_err(AppError::Database)?;
 
         if current_reservations_for_new_schedule as i32 >= new_room.capacity {
-            let reservation = db::get_reservation_by_id(&mut conn, id).ok();
-            let users = db::get_all_users(&mut conn).unwrap_or_default();
-            let schedules_with_details = db::get_schedules_with_details(&mut conn).unwrap_or_default();
-            let mut schedules_display_info: Vec<ScheduleDisplayInfo> = Vec::new();
-            for (s, m, r) in schedules_with_details {
-                let mut count = db::get_reservations_count_for_schedule(&mut conn, s.id).unwrap_or(0);
-                if let Some(res) = &reservation {
-                    if res.schedule_id == s.id {
-                        count = count.saturating_sub(1);
-                    }
-                }
-                schedules_display_info.push(ScheduleDisplayInfo {
-                    schedule: s.clone(), // Clone to avoid move error
-                    movie: m.clone(),    // Clone to avoid move error
-                    room: r.clone(),     // Clone to avoid move error
-                    available_seats: r.capacity - count as i32
-                });
-            }
-
             let error_message = Some(format!(
                 "Room capacity exceeded for new schedule ID {}. Available seats: {}",
                 new_schedule_id,
@@ -253,24 +222,6 @@ pub async fn update_reservation(
         }
         Err(e) => {
             tracing::error!("Failed to update reservation {}: {:?}", id, e);
-            let reservation = db::get_reservation_by_id(&mut conn, id).ok();
-            let users = db::get_all_users(&mut conn).unwrap_or_default();
-            let schedules_with_details = db::get_schedules_with_details(&mut conn).unwrap_or_default();
-            let mut schedules_display_info: Vec<ScheduleDisplayInfo> = Vec::new();
-            for (s, m, r) in schedules_with_details {
-                let mut count = db::get_reservations_count_for_schedule(&mut conn, s.id).unwrap_or(0);
-                if let Some(res) = &reservation {
-                    if res.schedule_id == s.id {
-                        count = count.saturating_sub(1); // Adjust count if this is the current schedule of the reservation being edited
-                    }
-                }
-                schedules_display_info.push(ScheduleDisplayInfo {
-                    schedule: s.clone(), // Clone to avoid move error
-                    movie: m.clone(),    // Clone to avoid move error
-                    room: r.clone(),     // Clone to avoid move error
-                    available_seats: r.capacity - count as i32
-                });
-            }
             let error_message = Some(format!("Failed to update reservation: {}", e));
             Ok(list_reservations(State(pool), error_message).into_response())
         }
