@@ -9,6 +9,7 @@ use serde::Deserialize;
 use serde::de::{self, Deserializer, SeqAccess, Visitor};
 use std::fmt;
 use diesel::serialize::IsNull::No;
+use diesel::result::{Error as DieselError, DatabaseErrorKind};
 use crate::{db::MysqlPool, extractors::session_user::RequiredUser};
 use crate::models::{NewReservation, ReservationDetail, ReservationChangeset, ScheduleDisplayInfo};
 use crate::{db, AppError};
@@ -74,7 +75,6 @@ pub async fn show_create_reservation_form(RequiredUser(user): RequiredUser, Stat
 }
 
 /// Handler to create a new reservation from form data.
-/// TODO: check if user already occupied the schedule
 pub async fn create_reservation(
     RequiredUser(user): RequiredUser,
     State(pool): State<Arc<MysqlPool>>,
@@ -109,6 +109,11 @@ pub async fn create_reservation(
     match db::create_reservation(&mut conn, new_reservation) {
         Ok(_) => {
             Ok(list_reservations(RequiredUser(user), State(pool), None).into_response())
+        }
+        Err(DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, info)) => {
+            let user_friendly_error = Some("This user already has a reservation for the selected schedule.".to_string());
+            tracing::warn!("Unique constraint violated: {:?}", info);
+            Ok(list_reservations(RequiredUser(user), State(pool), user_friendly_error).into_response())
         }
         Err(e) => {
             tracing::error!("Failed to create reservation: {:?}", e);
