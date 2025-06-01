@@ -13,6 +13,7 @@ use diesel::result::{Error as DieselError, DatabaseErrorKind};
 use crate::{db::MysqlPool, extractors::session_user::RequiredUser};
 use crate::models::{NewReservation, ReservationDetail, ReservationChangeset, ScheduleDisplayInfo};
 use crate::{db, AppError};
+use crate::db::check_if_capacity_exceeded;
 use crate::templates_structs::{ReservationsListTemplate, ReservationFormTemplate};
 
 #[derive(Deserialize)]
@@ -84,18 +85,10 @@ pub async fn create_reservation(
     let mut conn = pool.get().map_err(|e| AppError::PoolError(e.to_string()))?;
 
     // Capacity check
-    let schedule = db::get_schedule_by_id(&mut conn, form.schedule_id)
-        .map_err(AppError::Database)?;
-    let room = db::get_room_by_id(&mut conn, schedule.room_id)
-        .map_err(AppError::Database)?;
-    let current_reservations_count = db::get_reservations_count_for_schedule(&mut conn, form.schedule_id)
-        .map_err(AppError::Database)?;
-
-    if current_reservations_count as i32 >= room.capacity {
+    if check_if_capacity_exceeded(&mut conn, form.schedule_id)? {
         let error_message = Some(format!(
-            "Room capacity exceeded for schedule ID {}. Available seats: {}",
-            form.schedule_id,
-            room.capacity - current_reservations_count as i32
+            "Room capacity exceeded for schedule ID {}",
+            form.schedule_id
         ));
 
         return Ok(list_reservations(RequiredUser(user), State(pool), error_message).into_response());
@@ -178,20 +171,11 @@ pub async fn update_reservation(
         .map_err(AppError::Database)?;
 
     // Only perform capacity check if the schedule is being changed or if we need to re-validate
-    // TODO: refactor this into simpler SQL
     if form.schedule_id != current_reservation.schedule_id {
-        let new_schedule = db::get_schedule_by_id(&mut conn, form.schedule_id)
-            .map_err(AppError::Database)?;
-        let new_room = db::get_room_by_id(&mut conn, new_schedule.room_id)
-            .map_err(AppError::Database)?;
-        let current_reservations_for_new_schedule = db::get_reservations_count_for_schedule(&mut conn, form.schedule_id)
-            .map_err(AppError::Database)?;
-
-        if current_reservations_for_new_schedule as i32 >= new_room.capacity {
+        if check_if_capacity_exceeded(&mut conn, form.schedule_id)? {
             let error_message = Some(format!(
-                "Room capacity exceeded for new schedule ID {}. Available seats: {}",
-                form.schedule_id,
-                new_room.capacity - current_reservations_for_new_schedule as i32
+                "Room capacity exceeded for new schedule ID {}",
+                form.schedule_id
             ));
             return Ok(list_reservations(RequiredUser(user), State(pool), error_message).into_response());
         }

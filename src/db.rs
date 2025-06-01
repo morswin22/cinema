@@ -256,6 +256,34 @@ pub fn delete_multiple_reservations(
     diesel::delete(reservation.filter(id.eq_any(res_ids))).execute(conn)
 }
 
+pub fn check_if_capacity_exceeded(conn: &mut MysqlConnection, schedule_id: i32) -> QueryResult<bool> {
+    #[derive(QueryableByName)]
+    struct ExceededResult {
+        #[diesel(sql_type = diesel::sql_types::Bool)]
+        is_exceeded: bool,
+    }
+
+    let query = diesel::sql_query(
+        "SELECT EXISTS (
+            SELECT 1
+            FROM schedule s
+            JOIN rooms r ON s.room_id = r.id
+            LEFT JOIN reservation res ON s.id = res.schedule_id
+            WHERE s.id = ?
+            GROUP BY s.id, r.capacity
+            HAVING COUNT(res.id) + 1 > r.capacity
+        ) AS is_exceeded"
+    ).bind::<Integer, _>(schedule_id);
+
+    let result = query.load::<ExceededResult>(conn)?
+        .into_iter()
+        .next()
+        .map(|r| r.is_exceeded)
+        .unwrap_or(false); // If no rows, means schedule_id doesn't exist or no reservations, so not exceeded.
+
+    Ok(result)
+}
+
 pub fn create_mock_data(conn: &mut MysqlConnection) -> QueryResult<()> {
     use tracing::info;
 
