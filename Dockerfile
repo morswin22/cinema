@@ -26,6 +26,8 @@ RUN rm src/*.rs
 # Copy your project files here (optional if building a project)
 COPY . .
 
+RUN chmod +x start.sh
+
 RUN cargo build
 
 # Final image (you can make it slimmer with multi-stage builds if needed)

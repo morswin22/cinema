@@ -5,12 +5,12 @@ services:
     image: mysql/mysql-cluster:8.0
     container_name: ndb_mgmd
     hostname: ndb_mgmd
-    command: ndb_mgmd --ndb-nodeid=1
+    command: ndb_mgmd --ndb-nodeid=1 -f /usr/mysql-cluster/config.ini
     volumes:
       - ./cluster-config:/usr/mysql-cluster
     networks:
       cluster-network:
-        ipv4_address: 172.28.0.2
+        ipv4_address: 192.168.0.2
 
   ndbd1:
     image: mysql/mysql-cluster:8.0
@@ -23,7 +23,7 @@ services:
       - ./cluster-config:/usr/mysql-cluster
     networks:
       cluster-network:
-        ipv4_address: 172.28.0.3
+        ipv4_address: 192.168.0.3
 
   ndbd2:
     image: mysql/mysql-cluster:8.0
@@ -36,7 +36,7 @@ services:
       - ./cluster-config:/usr/mysql-cluster
     networks:
       cluster-network:
-        ipv4_address: 172.28.0.4
+        ipv4_address: 192.168.0.4
 
   mysqld:
     image: mysql:8.0
@@ -53,11 +53,13 @@ services:
     depends_on:
       - ndbd1
       - ndbd2
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d
     networks:
       cluster-network:
-        ipv4_address: 172.28.0.10
+        ipv4_address: 192.168.0.10
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "user", "-ppassword"]
+      test: ["CMD", "mysqladmin", "ping"]
       interval: 10s
       retries: 5
       start_period: 20s
@@ -75,11 +77,11 @@ services:
     tty: true
     networks:
       cluster-network:
-        ipv4_address: 172.28.0.1
+        ipv4_address: 192.168.0.5
 
 networks:
   cluster-network:
     driver: bridge
     ipam:
         config:
-            - subnet: 172.28.0.0/16
+            - subnet: 192.168.0.0/28
