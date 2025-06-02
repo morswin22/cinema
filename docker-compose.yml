@@ -1,44 +1,85 @@
 version: "3.8"
+
 services:
-  db:
-    image: mysql:8.4
+  ndb_mgmd:
+    image: mysql/mysql-cluster:8.0
+    container_name: ndb_mgmd
+    hostname: ndb_mgmd
+    command: ndb_mgmd --ndb-nodeid=1
+    volumes:
+      - ./cluster-config:/usr/mysql-cluster
+    networks:
+      cluster-network:
+        ipv4_address: 172.28.0.2
+
+  ndbd1:
+    image: mysql/mysql-cluster:8.0
+    container_name: ndbd1
+    hostname: ndbd1
+    command: ndbd --ndb-nodeid=2
+    depends_on:
+      - ndb_mgmd
+    volumes:
+      - ./cluster-config:/usr/mysql-cluster
+    networks:
+      cluster-network:
+        ipv4_address: 172.28.0.3
+
+  ndbd2:
+    image: mysql/mysql-cluster:8.0
+    container_name: ndbd2
+    hostname: ndbd2
+    command: ndbd --ndb-nodeid=3
+    depends_on:
+      - ndb_mgmd
+    volumes:
+      - ./cluster-config:/usr/mysql-cluster
+    networks:
+      cluster-network:
+        ipv4_address: 172.28.0.4
+
+  mysqld:
+    image: mysql:8.0
+    container_name: mysqld
+    hostname: mysqld
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: cinema
       MYSQL_USER: user
       MYSQL_PASSWORD: password
+    command: --ndbcluster --ndb-connectstring=ndb_mgmd
     ports:
-      - "3306:3306"
+      - "3307:3306"
+    depends_on:
+      - ndbd1
+      - ndbd2
+    networks:
+      cluster-network:
+        ipv4_address: 172.28.0.10
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "user", "-ppassword"]
       interval: 10s
       retries: 5
       start_period: 20s
       timeout: 5s
-    networks:
-      - mynetwork
-    deploy:
-      resources:
-        limits:
-          memory: 1G
 
   app:
     build: .
     depends_on:
-      - db
+      - mysqld
     environment:
-      DATABASE_URL: mysql://user:password@db:3306/cinema
+      DATABASE_URL: mysql://user:password@mysqld:3306/cinema
     ports:
       - "8080:8080"
     stdin_open: true
     tty: true
     networks:
-      - mynetwork
-    deploy:
-      resources:
-        limits:
-          memory: 1G
+      cluster-network:
+        ipv4_address: 172.28.0.1
 
 networks:
-  mynetwork:
+  cluster-network:
     driver: bridge
+    ipam:
+        config:
+            - subnet: 172.28.0.0/16

@@ -2,7 +2,7 @@
 set -e
 
 # Wait for Mysql to be ready
-until mysqladmin ping -h db -u user -ppassword --silent; do
+until mysqladmin ping -h mysqld -u user -ppassword --silent; do
   echo "Waiting for Mysql to be ready..."
   sleep 2
 done
