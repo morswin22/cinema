@@ -1,0 +1,2 @@
+GRANT ALL PRIVILEGES ON cinema.* TO 'user'@'%';
+FLUSH PRIVILEGES;
