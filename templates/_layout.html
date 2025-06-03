@@ -16,6 +16,15 @@
     </head>
     <body hx-boost="true">
         {%~ block content %}{% endblock ~%}
-        <!-- TODO: enable swap on 4xx status code -->
+        <script>
+            document.body.addEventListener("htmx:responseError", function(event) {
+                const contentType = event.detail.xhr.getResponseHeader("Content-Type");
+                if (contentType && contentType.includes("text/html")) {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(event.detail.xhr.responseText, "text/html");
+                    document.body.replaceWith(doc.body);
+                }
+            });
+        </script>
     </body>
 </html>
