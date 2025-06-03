@@ -13,7 +13,7 @@ use diesel::result::{Error as DieselError, DatabaseErrorKind};
 use crate::{db::MysqlPool, extractors::session_user::RequiredUser};
 use crate::models::{NewReservation, ReservationDetail, ReservationChangeset, ScheduleDisplayInfo};
 use crate::{db, AppError};
-use crate::db::check_if_capacity_exceeded;
+use crate::db::{check_if_capacity_exceeded, check_if_users_reservation};
 use crate::templates_structs::{ReservationsListTemplate, ReservationFormTemplate};
 
 #[derive(Deserialize)]
@@ -207,6 +207,10 @@ pub async fn delete_reservation(
 ) -> Result<Response, AppError> {
     let mut conn = pool.get().map_err(|e| AppError::PoolError(e.to_string()))?;
 
+    if !check_if_users_reservation(&mut conn, vec![id], user.id)? {
+        return Err(AppError::UserLoginError);
+    }
+
     match db::delete_reservation(&mut conn, id) {
         Ok(_) => {
             Ok(list_reservations(RequiredUser(user), State(pool), None).into_response())
@@ -238,6 +242,10 @@ pub async fn delete_multiple_reservations(
 
     if reservation_ids.is_empty() {
         return Err(AppError::BadRequest("No reservations selected for deletion.".to_string()));
+    }
+
+    if !check_if_users_reservation(&mut conn, reservation_ids.clone(), user.id)? {
+        return Err(AppError::UserLoginError);
     }
 
     match db::delete_multiple_reservations(&mut conn, reservation_ids) {

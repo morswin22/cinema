@@ -5,7 +5,7 @@ use diesel::MysqlConnection;
 use dotenvy::dotenv;
 use std::env;
 use chrono::NaiveDateTime;
-
+use diesel::dsl::{count_star, select};
 use crate::models::{
     Movie, NewMovie, NewReservation, NewRoom, NewSchedule, NewUser, Reservation, ReservationDetail,
     Room, Schedule, User, ReservationChangeset, LastInsertId,
@@ -237,11 +237,24 @@ pub fn get_reservations_count_for_schedule(
         .get_result(conn)
 }
 
+/// Checks if user can delete this reservation
+pub fn check_if_users_reservation(conn: &mut MysqlConnection, res_ids: Vec<i32>, user_id_value: i32) -> QueryResult<bool> {
+    use crate::schema::reservation::dsl::*;
+
+    let res_ids_len = res_ids.len();
+    let result = reservation
+        .filter(id.eq_any(res_ids))
+        .filter(user_id.eq(user_id_value))
+        .select(count_star())
+        .first::<i64>(conn).unwrap_or(0);
+
+    Ok(result == res_ids_len as i64)
+}
+
 /// Deletes a single reservation by its ID.
 /// Returns the number of deleted rows (should be 1 if successful).
 pub fn delete_reservation(conn: &mut MysqlConnection, res_id: i32) -> QueryResult<usize> {
     use crate::schema::reservation::dsl::*;
-    // TODO: only delete reservations of the currently logged in user
     diesel::delete(reservation.filter(id.eq(res_id))).execute(conn)
 }
 
@@ -249,10 +262,9 @@ pub fn delete_reservation(conn: &mut MysqlConnection, res_id: i32) -> QueryResul
 /// Returns the number of deleted rows.
 pub fn delete_multiple_reservations(
     conn: &mut MysqlConnection,
-    res_ids: Vec<i32>,
+    res_ids: Vec<i32>
 ) -> QueryResult<usize> {
     use crate::schema::reservation::dsl::*;
-    // TODO: only delete reservations of the currently logged in user
     diesel::delete(reservation.filter(id.eq_any(res_ids))).execute(conn)
 }
 
