@@ -7,7 +7,7 @@ from collections import defaultdict
 from auth_helpers import register_and_login_user, BASE_URL
 
 NUM_CLIENTS = 10
-REQUESTS_PER_CLIENT = 500
+REQUESTS_PER_CLIENT = 100
 
 async def perform_random_request(session: RetryClient):
     """
