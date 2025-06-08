@@ -50,14 +50,8 @@ async fn main() -> Result<(), Error> {
     let pool = establish_connection_pool();
     let shared_pool = Arc::new(pool); // Wrap in Arc for sharing across threads
 
-    // Acquire a connection to create mock data
+    // Acquire a connection
     let mut conn = shared_pool.get().expect("Failed to get database connection from pool");
-
-    // Create mock data at startup
-    match db::create_mock_data(&mut conn) {
-        Ok(_) => info!("Mock data created successfully (or already exists)."),
-        Err(e) => tracing::error!("Failed to create mock data: {:?}", e),
-    }
 
     let session_store = MemoryStore::default();
     let session_layer = SessionManagerLayer::new(session_store)
