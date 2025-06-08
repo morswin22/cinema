@@ -23,6 +23,8 @@ pub fn establish_connection_pool() -> MysqlPool {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let manager = ConnectionManager::<MysqlConnection>::new(database_url);
     Pool::builder()
+        .max_size(20) // <--- INCREASE THIS: Number of connections in the pool.
+        .min_idle(Some(5))
         .test_on_check_out(true) // Test connections when retrieved from the pool
         .build(manager)
         .expect("Could not build connection pool")
