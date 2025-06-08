@@ -16,7 +16,7 @@ async def register_and_login_user(session: aiohttp.ClientSession, username: str)
     try:
         async with session.post(f"{BASE_URL}/register", data=register_data) as response:
             response_text = await response.text()
-            if response.status == 200:
+            if response.status == 200 and not "Unable to register new user" in response_text:
                 print(f"[{username}] User {email} registered successfully")
             else:
                 print(f"[{username}] User registration failed. Status: {response.status}, Response: {response_text[:200]}")
@@ -30,7 +30,7 @@ async def register_and_login_user(session: aiohttp.ClientSession, username: str)
     print(f"[{username}] Attempting to login user: {email} via /login...")
     try:
         async with session.post(f"{BASE_URL}/login", data=login_data) as response: # Target /auth/login
-            if response.status == 200:
+            if response.status == 200 and not "Bad login credentials" in response_text:
                 print(f"[{username}] User login successful. Session cookie should be handled by aiohttp session.")
                 return session
             else:
