@@ -7,15 +7,17 @@ until mysqladmin ping -h mysqld -u user -ppassword --silent; do
   sleep 2
 done
 
-# Set up the DB and run migrations
-#diesel setup --database-url="$DATABASE_URL"
+if [ -n "${MIGRATION}" ]; then
+  # Set up the DB and run migrations
+  #diesel setup --database-url="$DATABASE_URL"
 
-# Optional: generate a migration based on schema diff
-#diesel migration generate --diff-schema create_tables
+  # Optional: generate a migration based on schema diff
+  #diesel migration generate --diff-schema create_tables
 
-diesel migration run
+  diesel migration run
 
-diesel print-schema
-
-# Keep container alive or run your app here
-cargo run --bin Cinema
+  diesel print-schema
+else
+  # Keep container alive or run your app here
+  cargo run --bin Cinema
+fi

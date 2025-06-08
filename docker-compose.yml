@@ -65,10 +65,20 @@ services:
       start_period: 20s
       timeout: 5s
 
-  app:
+  migration:
     build: .
     depends_on:
       - mysqld
+    environment:
+      DATABASE_URL: mysql://user:password@mysqld:3306/cinema
+      MIGRATION: true
+    networks:
+      cluster-network:
+
+  app:
+    build: .
+    depends_on:
+      - migration
     environment:
       DATABASE_URL: mysql://user:password@mysqld:3306/cinema
     ports:
