@@ -9,7 +9,12 @@
         {{ movie.title }}
     </h1>
 
-    <img src="https://placehold.co/200x300" alt="{{ movie.title }}" style="border-radius: 4px;">
+    <img
+        src="{{ movie.poster }}"
+        alt="{{ movie.title }}"
+        style="border-radius: 4px; width: 200px; height: 300px;"
+        onerror="if (this.src != 'https://placehold.co/200x300') this.src = 'https://placehold.co/200x300';"
+    >
 
     <p>{{ movie.year }}</p>
     <p>{{ movie.director }}</p>

@@ -8,6 +8,8 @@ diesel::table! {
         year -> Integer,                                                                                                                                
         #[max_length = 255]                                                                                                                             
         director -> Varchar,                                                                                                                            
+        #[max_length = 255]
+        poster -> Varchar
     }                                                                                                                                                   
 }
 

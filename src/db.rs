@@ -7,7 +7,7 @@ use std::env;
 use chrono::NaiveDateTime;
 use diesel::dsl::{count_star, select};
 use crate::models::{
-    Movie, NewMovie, NewReservation, NewRoom, NewSchedule, NewUser, Reservation, ReservationDetail,
+    Movie, NewReservation, NewRoom, NewSchedule, NewUser, Reservation, ReservationDetail,
     Room, Schedule, User, ReservationChangeset, LastInsertId,
 };
 use crate::schema::{movies, reservation, rooms, schedule, users};
@@ -65,17 +65,6 @@ pub fn get_all_users(conn: &mut MysqlConnection) -> QueryResult<Vec<User>> {
 
 
 // --- CRUD Functions for Movies ---
-
-/// Creates a new movie in the database.
-/// Returns the ID of the newly created movie.
-pub fn create_movie(conn: &mut MysqlConnection, new_movie: NewMovie) -> QueryResult<i32> {
-    diesel::insert_into(movies::table)
-        .values(&new_movie)
-        .execute(conn)?; // Execute the insert
-
-    get_last_insert_id(conn) // Use the helper function
-}
-
 /// Finds a movie by its ID.
 pub fn get_movie_by_id(conn: &mut MysqlConnection, movie_id: i32) -> QueryResult<Movie> {
     movies::table.find(movie_id).first(conn)
@@ -296,82 +285,4 @@ pub fn check_if_capacity_exceeded(conn: &mut MysqlConnection, schedule_id: i32) 
         .unwrap_or(false); // If no rows, means schedule_id doesn't exist or no reservations, so not exceeded.
 
     Ok(result)
-}
-
-pub fn create_mock_data(conn: &mut MysqlConnection) -> QueryResult<()> {
-    use tracing::info;
-
-    info!("Attempting to create mock data...");
-
-    // Create Users
-    let user1 = NewUser { email: "alice@example.com", password: "password123" };
-    let user2 = NewUser { email: "bob@example.com", password: "securepassword" };
-
-    let user1_id = create_user(conn, user1)?;
-    let user2_id = create_user(conn, user2)?;
-    info!("Created users with IDs: {}, {}", user1_id, user2_id);
-
-    // Create Movies
-    let movie1 = NewMovie { title: "The Rust Movie", year: 2023, director: "Ferris" };
-    let movie2 = NewMovie { title: "Async Adventures", year: 2024, director: "Tokio" };
-
-    let movie1_id = create_movie(conn, movie1)?;
-    let movie2_id = create_movie(conn, movie2)?;
-    info!("Created movies with IDs: {}, {}", movie1_id, movie2_id);
-
-    // Create Rooms
-    let room1 = NewRoom { capacity: 100, label: "Screen 1" };
-    let room2 = NewRoom { capacity: 50, label: "Screen 2" };
-    let room3 = NewRoom { capacity: 1, label: "Screen 3" };
-
-    let room1_id = create_room(conn, room1)?;
-    let room2_id = create_room(conn, room2)?;
-    let room3_id = create_room(conn, room3)?;
-    info!("Created rooms with IDs: {}, {}, {}", room1_id, room2_id, room3_id);
-
-    // Create Schedules
-    let schedule1 = NewSchedule {
-        movie_id: movie1_id,
-        room_id: room1_id,
-        date: NaiveDateTime::parse_from_str("2025-06-01 18:00:00", "%Y-%m-%d %H:%M:%S").unwrap(),
-    };
-    let schedule2 = NewSchedule {
-        movie_id: movie2_id,
-        room_id: room2_id,
-        date: NaiveDateTime::parse_from_str("2025-06-01 20:30:00", "%Y-%m-%d %H:%M:%S").unwrap(),
-    };
-    let schedule3 = NewSchedule {
-        movie_id: movie1_id,
-        room_id: room2_id,
-        date: NaiveDateTime::parse_from_str("2025-06-02 14:00:00", "%Y-%m-%d %H:%M:%S").unwrap(),
-    };
-
-    let schedule4 = NewSchedule {
-        movie_id: movie1_id,
-        room_id: room3_id,
-        date: NaiveDateTime::parse_from_str("2025-06-02 15:00:00", "%Y-%m-%d %H:%M:%S").unwrap(),
-    };
-
-    let schedule1_id = create_schedule(conn, schedule1)?;
-    let schedule2_id = create_schedule(conn, schedule2)?;
-    let schedule3_id = create_schedule(conn, schedule3)?;
-    let schedule4_id = create_schedule(conn, schedule4)?;
-    info!("Created schedules with IDs: {}, {}, {}, {}", schedule1_id, schedule2_id, schedule3_id, schedule4_id);
-
-    // Create Reservations (optional, linking users and schedules)
-    let reservation1 = NewReservation {
-        user_id: user1_id,
-        schedule_id: schedule1_id,
-    };
-    let reservation2 = NewReservation {
-        user_id: user2_id,
-        schedule_id: schedule2_id,
-    };
-
-    create_reservation(conn, reservation1)?;
-    create_reservation(conn, reservation2)?;
-    info!("Created sample reservations.");
-
-
-    Ok(())
 }

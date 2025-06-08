@@ -32,15 +32,7 @@ pub struct Movie {
     pub title: String,
     pub year: i32,
     pub director: String,
-}
-
-#[derive(Insertable)]
-#[diesel(table_name = movies)]
-#[diesel(check_for_backend(diesel::mysql::Mysql))]
-pub struct NewMovie<'a> {
-    pub title: &'a str,
-    pub year: i32,
-    pub director: &'a str,
+    pub poster: String,
 }
 
 // Room Model

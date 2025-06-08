@@ -13,7 +13,12 @@
         {% for movie in movies %}
             <div class="pure-u-1 pure-u-md-1-4" style="padding: 10px;">
                 <a href="/movies/{{ movie.id }}" style="text-decoration: none; color: inherit; display: block; text-align: center;">
-                    <img src="https://placehold.co/200x300" alt="{{ movie.title }}" style="border-radius: 4px;">
+                    <img
+                        src="{{ movie.poster }}"
+                        alt="{{ movie.title }}"
+                        style="border-radius: 4px; width: 200px; height: 300px;"
+                        onerror="if (this.src != 'https://placehold.co/200x300') this.src = 'https://placehold.co/200x300';"
+                    >
                     <div style="margin-top: 8px; font-weight: bold;">{{ movie.title }}</div>
                 </a>
             </div>
