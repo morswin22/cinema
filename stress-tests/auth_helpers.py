@@ -1,5 +1,6 @@
 import aiohttp
 import requests # For synchronous initial data fetching if needed
+import re
 
 BASE_URL = "http://localhost:8080"
 
@@ -40,3 +41,11 @@ async def register_and_login_user(session: aiohttp.ClientSession, username: str)
     except aiohttp.ClientError as e:
         print(f"[{username}] Network error during user login: {e}")
         return None
+    
+async def get_reservations(session: aiohttp.ClientSession):
+    """Fetches list of reservation IDs for the current user."""
+    async with session.get(f"{BASE_URL}/reservations") as response:
+        text = await response.text()
+        pattern = r'hx-delete="\/reservations\/(\d+)'
+        matches = re.findall(pattern, text)
+        return [int(match) for match in matches]

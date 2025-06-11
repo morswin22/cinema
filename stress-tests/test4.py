@@ -9,7 +9,7 @@ import re
 from enum import Enum
 
 # Import the new authentication helpers
-from auth_helpers import register_and_login_user, BASE_URL
+from auth_helpers import register_and_login_user, BASE_URL, get_reservations
 
 NUM_CLIENTS = 5 # Number of concurrent (book, cancel) pairs
 ITERATIONS_PER_CLIENT = 100 # How many times each pair performs the cycle
@@ -39,27 +39,18 @@ async def attempt_reservation_and_cancellation(client_id: int, session: RetryCli
                     # await asyncio.sleep(0.1) # Give DB a moment to sync
 
                     try:
-                        async with session.get(f"{BASE_URL}/reservations") as get_reservations_response:
-                            # TODO: use code from stress test 5 to get list of reservation, to find new reservation
-                            if get_reservations_response.status == 200:
-                                all_reservations = await get_reservations_response.json()
-                                # Find the reservation belonging to this user for this schedule
-                                # Sort to pick the latest if multiple exist (though should be 1 for this test)
-                                found_res = next(
-                                    (res for res in sorted(all_reservations, key=lambda x: x.get('reservation_id', 0), reverse=True) if res.get('schedule_id') == schedule_id),
-                                    None
-                                )
-                                if found_res:
-                                    reservation_id_to_delete = found_res.get('reservation_id')
-                                    print(f"Pair {client_id}: Found reservation ID {reservation_id_to_delete} for deletion.")
-                                else:
-                                    print(f"Pair {client_id}: WARNING: Could not find reservation after successful booking for schedule {schedule_id}. Skipping deletion.")
-                                    return False
-                            else:
-                                print(f"Pair {client_id}: ERROR: Failed to fetch all reservations to find ID. Status: {get_reservations_response.status}")
-                                return False
-                    except (aiohttp.ClientError, json.JSONDecodeError) as e:
-                        print(f"Pair {client_id}: Network/JSON error while fetching reservations for deletion: {e}")
+                        all_reservations = await get_reservations(session)
+                        # Find the reservation belonging to this user for this schedule
+                        # Sort to pick the latest if multiple exist (though should be 1 for this test)
+                        found_res, *other = sorted(all_reservations, reverse=True)
+                        if found_res:
+                            reservation_id_to_delete = found_res
+                            print(f"Pair {client_id}: Found reservation ID {reservation_id_to_delete} for deletion.")
+                        else:
+                            print(f"Pair {client_id}: WARNING: Could not find reservation after successful booking for schedule {schedule_id}. Skipping deletion.")
+                            return False
+                    except aiohttp.ClientError as e:
+                        print(f"Pair {client_id}: Network error while fetching reservations for deletion: {e}")
                         return False
             else:
                 print(f"Pair {client_id}: Booking for schedule {schedule_id} resulted in SERVER_ERROR. Status: {book_status}, Response: {book_response_text[:200]}...")
@@ -93,7 +84,7 @@ async def stress_test_4():
     print("\nSetting up authentication context for clients (registering and logging in users for pairs)...")
     client_sessions = []
     try:
-        auth_tasks = [register_and_login_user(aiohttp.ClientSession(), f"race_client_{i}") for i in range(2)]
+        auth_tasks = [register_and_login_user(aiohttp.ClientSession(), f"race_client_{i}") for i in range(NUM_CLIENTS)]
         results = await asyncio.gather(*auth_tasks)
 
         for session_obj in results:
@@ -130,7 +121,7 @@ async def stress_test_4():
 
     tasks = []
     for i in range(NUM_CLIENTS):
-        session, user_id = client_sessions[i]
+        session = client_sessions[i]
         schedule_id = random.choice(schedules_ids)
 
         for iteration in range(ITERATIONS_PER_CLIENT):
@@ -155,7 +146,7 @@ async def stress_test_4():
     print(f"Other Server errors: {server_error_count}")
     print(f"Total duration: {duration:.2f} seconds")
 
-    await asyncio.gather(*[s.close() for s, _ in client_sessions])
+    await asyncio.gather(*[s.close() for s in client_sessions])
 
     print("---------------------------------------------------\n")
 

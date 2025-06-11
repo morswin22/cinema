@@ -7,7 +7,7 @@ import random
 import re
 from enum import Enum
 
-from auth_helpers import register_and_login_user, BASE_URL
+from auth_helpers import register_and_login_user, BASE_URL, get_reservations
 
 class ResponseType(Enum):
     SUCCESS = 0
@@ -16,14 +16,6 @@ class ResponseType(Enum):
     SERVER_ERROR = 3
 
 TARGET_CAPACITY = 1  # The capacity of the schedule we'll target for this test (assumed to be 1)
-
-async def get_reservations(session: aiohttp.ClientSession):
-    """Fetches list of reservation IDs for the current user."""
-    async with session.get(f"{BASE_URL}/reservations") as response:
-        text = await response.text()
-        pattern = r'hx-delete="\/reservations\/(\d+)'
-        matches = re.findall(pattern, text)
-        return [int(match) for match in matches]
 
 async def bulk_delete_reservations(client_id: int, session: aiohttp.ClientSession, reservation_ids: list):
     """Deletes reservations in bulk for the current user."""
