@@ -8,12 +8,12 @@ use askama::Template;
 use serde::Deserialize;
 use serde::de::{self, Deserializer, SeqAccess, Visitor};
 use std::fmt;
-use diesel::serialize::IsNull::No;
+use diesel::{serialize::IsNull::No, Connection};
 use diesel::result::{Error as DieselError, DatabaseErrorKind};
 use crate::{db::MysqlPool, extractors::session_user::RequiredUser};
 use crate::models::{NewReservation, ReservationDetail, ReservationChangeset, ScheduleDisplayInfo};
 use crate::{db, AppError};
-use crate::db::{check_if_capacity_exceeded, check_if_users_reservation};
+use crate::db::check_if_users_reservation;
 use crate::templates_structs::{ReservationsListTemplate, ReservationFormTemplate};
 
 #[derive(Deserialize)]
@@ -84,16 +84,6 @@ pub async fn create_reservation(
 
     let mut conn = pool.get().map_err(|e| AppError::PoolError(e.to_string()))?;
 
-    // Capacity check
-    if check_if_capacity_exceeded(&mut conn, form.schedule_id)? {
-        let error_message = Some(format!(
-            "Room capacity exceeded for schedule ID {}",
-            form.schedule_id
-        ));
-
-        return Ok(list_reservations(RequiredUser(user), State(pool), error_message).into_response());
-    }
-
     let new_reservation = NewReservation {
         user_id: user.id,
         schedule_id: form.schedule_id,
@@ -107,6 +97,14 @@ pub async fn create_reservation(
             let user_friendly_error = Some("This user already has a reservation for the selected schedule.".to_string());
             tracing::warn!("Unique constraint violated: {:?}", info);
             Ok(list_reservations(RequiredUser(user), State(pool), user_friendly_error).into_response())
+        }
+        Err(DieselError::RollbackTransaction) => {
+            let error_message = Some(format!(
+                "Room capacity exceeded for schedule ID {}",
+                form.schedule_id
+            ));
+
+            Ok(list_reservations(RequiredUser(user), State(pool), error_message).into_response())
         }
         Err(e) => {
             tracing::error!("Failed to create reservation: {:?}", e);
@@ -170,18 +168,6 @@ pub async fn update_reservation(
     let current_reservation = db::get_reservation_by_id(&mut conn, id)
         .map_err(AppError::Database)?;
 
-    // Only perform capacity check if the schedule is being changed or if we need to re-validate
-    if form.schedule_id != current_reservation.schedule_id {
-        if check_if_capacity_exceeded(&mut conn, form.schedule_id)? {
-            let error_message = Some(format!(
-                "Room capacity exceeded for new schedule ID {}",
-                form.schedule_id
-            ));
-            return Ok(list_reservations(RequiredUser(user), State(pool), error_message).into_response());
-        }
-    }
-
-
     let changeset = ReservationChangeset {
         user_id: Some(user.id),
         schedule_id: Some(form.schedule_id),
@@ -190,6 +176,13 @@ pub async fn update_reservation(
     match db::update_reservation(&mut conn, id, changeset) {
         Ok(_) => {
             Ok(list_reservations(RequiredUser(user), State(pool), None).into_response())
+        }
+        Err(DieselError::RollbackTransaction) => {
+            let error_message = Some(format!(
+                "Room capacity exceeded for new schedule ID {}",
+                form.schedule_id
+            ));
+            Ok(list_reservations(RequiredUser(user), State(pool), error_message).into_response())
         }
         Err(e) => {
             tracing::error!("Failed to update reservation {}: {:?}", id, e);

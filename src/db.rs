@@ -138,11 +138,17 @@ pub fn create_reservation(
     conn: &mut MysqlConnection,
     new_reservation: NewReservation,
 ) -> QueryResult<i32> {
-    diesel::insert_into(reservation::table)
-        .values(&new_reservation)
-        .execute(conn)?; // Execute the insert
+    conn.transaction(|conn| {
+        diesel::insert_into(reservation::table)
+            .values(&new_reservation)
+            .execute(conn)?; // Execute the insert
 
-    get_last_insert_id(conn) // Use the helper function
+        if check_if_capacity_exceeded(conn, new_reservation.schedule_id)? {
+            return Err(diesel::result::Error::RollbackTransaction);
+        }
+
+        get_last_insert_id(conn) // Use the helper function
+    })
 }
 
 /// Updates an existing reservation.
@@ -154,18 +160,26 @@ pub fn update_reservation(
 ) -> QueryResult<Reservation> {
     use crate::schema::reservation::dsl::*;
 
-    let rows_affected = diesel::update(reservation.find(reservation_id))
-        .set(changeset) // Pass the changeset struct directly
-        .execute(conn)?; // Use execute and handle the result
+    conn.transaction(|conn| {
+        let rows_affected = diesel::update(reservation.find(reservation_id))
+            .set(&changeset) // Pass the changeset struct directly
+            .execute(conn)?; // Use execute and handle the result
 
-    if rows_affected == 0 {
-        // If no rows were affected, it means the reservation ID was not found.
-        // Return a Diesel error indicating no record found.
-        Err(diesel::result::Error::NotFound)
-    } else {
-        // If successful, fetch the updated reservation.
-        reservation.find(reservation_id).first(conn)
-    }
+        if rows_affected == 0 {
+            // If no rows were affected, it means the reservation ID was not found.
+            // Return a Diesel error indicating no record found.
+            Err(diesel::result::Error::NotFound)
+        } else {
+            if let Some(form_schedule_id) = changeset.schedule_id {
+                if check_if_capacity_exceeded(conn, form_schedule_id)? {
+                    return Err(diesel::result::Error::RollbackTransaction);
+                }
+            }
+
+            // If successful, fetch the updated reservation.
+            reservation.find(reservation_id).first(conn)
+        }
+    })
 }
 
 /// Retrieves a single reservation by its ID.
@@ -274,7 +288,7 @@ pub fn check_if_capacity_exceeded(conn: &mut MysqlConnection, schedule_id: i32) 
             LEFT JOIN reservation res ON s.id = res.schedule_id
             WHERE s.id = ?
             GROUP BY s.id, r.capacity
-            HAVING COUNT(res.id) + 1 > r.capacity
+            HAVING COUNT(res.id) > r.capacity
         ) AS is_exceeded"
     ).bind::<Integer, _>(schedule_id);
 
