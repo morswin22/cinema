@@ -25,18 +25,17 @@ use models::User;
 use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
 use tower_sessions::cookie::time::Duration;
 
-// Import the new modules
 mod db;
 mod models;
 mod schema;
-mod routes; // New: Contains all route definitions
-mod handlers; // New: Contains all handler functions
-mod templates_structs; // New: Contains all Askama template structs
+mod routes;
+mod handlers;
+mod templates_structs;
 mod forms;
 mod extractors;
 
-use db::{establish_connection_pool, MysqlPool}; // Use the pool from db.rs
-use templates_structs::ErrorTemplate; // Import ErrorTemplate from its new location
+use db::{establish_connection_pool, MysqlPool};
+use templates_structs::ErrorTemplate;
 
 const SESSION_USER_KEY: &str = "USER";
 
@@ -46,24 +45,18 @@ async fn main() -> Result<(), Error> {
         .with_max_level(Level::DEBUG)
         .init();
 
-    // Establish database connection pool using the function from db.rs
     let pool = establish_connection_pool();
-    let shared_pool = Arc::new(pool); // Wrap in Arc for sharing across threads
-
-    // Acquire a connection
-    let mut conn = shared_pool.get().expect("Failed to get database connection from pool");
+    let shared_pool = Arc::new(pool);
 
     let session_store = MemoryStore::default();
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false)
         .with_expiry(Expiry::OnInactivity(Duration::hours(3)));
 
-    // Build our application with routes from the new `routes` module
-    let app = routes::app_router(shared_pool.clone()) // Pass the shared pool to the router builder
+    let app = routes::app_router(shared_pool.clone())
         .fallback(|| async { AppError::NotFound })
         .layer(TraceLayer::new_for_http())
         .layer(session_layer);
-    // .with_state(shared_pool); // This call is now handled inside routes::app_router
 
     let listener = TcpListener::bind("0.0.0.0:8080")
         .await
@@ -83,9 +76,8 @@ enum Error {
     Run(#[source] std::io::Error),
 }
 
-/// This enum contains any error that could occur while handling an incoming request.
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
-pub enum AppError { // Made public for use in handlers
+pub enum AppError {
     /// not found
     NotFound,
     /// could not render template
@@ -104,7 +96,6 @@ pub enum AppError { // Made public for use in handlers
     UnauthorizedError
 }
 
-/// This is your error handler
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let status = match &self {

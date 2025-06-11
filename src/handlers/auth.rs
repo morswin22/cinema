@@ -2,13 +2,10 @@ use axum::{
     extract::State,
     response::{Html, IntoResponse, Redirect, Response},
     Form,
-    http::StatusCode,
 };
-use r2d2::PooledConnection;
 use tower_sessions::Session;
-use axum::extract::Extension;
 use bcrypt::{hash, verify, DEFAULT_COST};
-use diesel::{prelude::*, r2d2::ConnectionManager};
+use diesel::{prelude::*};
 use askama::Template;
 use htmxtools::response::HxRedirect;
 use axum::http::Uri;
@@ -101,7 +98,7 @@ pub async fn handle_login(
 
     if let Ok(user) = result { 
         session.insert(SESSION_USER_KEY, user).await.unwrap();
-        return Ok(HxRedirect::from(Uri::from_static("/")).into_response());
+        Ok(HxRedirect::from(Uri::from_static("/")).into_response())
     } else {
         #[derive(Debug, Template)]
         #[template(path = "login_form.html")]

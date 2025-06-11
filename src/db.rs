@@ -4,122 +4,36 @@ use diesel::sql_types::Integer;
 use diesel::MysqlConnection;
 use dotenvy::dotenv;
 use std::env;
-use chrono::NaiveDateTime;
-use diesel::dsl::{count_star, select};
+use diesel::dsl::{count_star};
 use crate::models::{
-    Movie, NewReservation, NewRoom, NewSchedule, NewUser, Reservation, ReservationDetail,
-    Room, Schedule, User, ReservationChangeset, LastInsertId,
+    Movie, NewReservation, Reservation, ReservationDetail,
+    Room, Schedule, ReservationChangeset,
 };
-use crate::schema::{movies, reservation, rooms, schedule, users};
+use crate::schema::{movies, reservation, rooms, schedule};
 
-// Type alias for the connection pool
 pub type MysqlPool = Pool<ConnectionManager<MysqlConnection>>;
 pub type MysqlPooledConnection = PooledConnection<ConnectionManager<MysqlConnection>>;
 
-/// Establishes a database connection pool.
-/// Reads the DATABASE_URL from the environment.
 pub fn establish_connection_pool() -> MysqlPool {
-    dotenv().ok(); // Load .env file
+    dotenv().ok();
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let manager = ConnectionManager::<MysqlConnection>::new(database_url);
     Pool::builder()
-        .max_size(20) // <--- INCREASE THIS: Number of connections in the pool.
+        .max_size(20)
         .min_idle(Some(5))
-        .test_on_check_out(true) // Test connections when retrieved from the pool
+        .test_on_check_out(true)
         .build(manager)
         .expect("Could not build connection pool")
 }
 
-/// Helper function to retrieve the last inserted ID for MySQL.
-/// This is necessary because MySQL does not support the `RETURNING` clause.
-fn get_last_insert_id(conn: &mut MysqlConnection) -> QueryResult<i32> {
-    diesel::sql_query("SELECT LAST_INSERT_ID() as id;")
-        .load::<LastInsertId>(conn)?
-        .into_iter()
-        .next()
-        .map(|res| res.id as i32)
-        .ok_or(diesel::result::Error::NotFound) // Handle case where ID is not found
-}
-
-// --- CRUD Functions for Users ---
-
-/// Creates a new user in the database.
-/// Returns the ID of the newly created user.
-pub fn create_user(conn: &mut MysqlConnection, new_user: NewUser) -> QueryResult<i32> {
-    diesel::insert_into(users::table)
-        .values(&new_user)
-        .execute(conn)?; // Execute the insert
-
-    get_last_insert_id(conn) // Use the helper function
-}
-
-/// Finds a user by their ID.
-pub fn get_user_by_id(conn: &mut MysqlConnection, user_id: i32) -> QueryResult<User> {
-    users::table.find(user_id).first(conn)
-}
-
-/// Gets all users.
-pub fn get_all_users(conn: &mut MysqlConnection) -> QueryResult<Vec<User>> {
-    users::table.load::<User>(conn)
-}
-
-
-// --- CRUD Functions for Movies ---
-/// Finds a movie by its ID.
 pub fn get_movie_by_id(conn: &mut MysqlConnection, movie_id: i32) -> QueryResult<Movie> {
     movies::table.find(movie_id).first(conn)
 }
 
-/// Gets all movies.
 pub fn get_all_movies(conn: &mut MysqlConnection) -> QueryResult<Vec<Movie>> {
     movies::table.load::<Movie>(conn)
 }
 
-// --- CRUD Functions for Rooms ---
-
-/// Creates a new room in the database.
-/// Returns the ID of the newly created room.
-pub fn create_room(conn: &mut MysqlConnection, new_room: NewRoom) -> QueryResult<i32> {
-    diesel::insert_into(rooms::table)
-        .values(&new_room)
-        .execute(conn)?; // Execute the insert
-
-    get_last_insert_id(conn) // Use the helper function
-}
-
-/// Finds a room by its ID.
-pub fn get_room_by_id(conn: &mut MysqlConnection, room_id: i32) -> QueryResult<Room> {
-    rooms::table.find(room_id).first(conn)
-}
-
-/// Gets all rooms.
-pub fn get_all_rooms(conn: &mut MysqlConnection) -> QueryResult<Vec<Room>> {
-    rooms::table.load::<Room>(conn)
-}
-
-// --- CRUD Functions for Schedule ---
-
-/// Creates a new schedule entry in the database.
-/// Returns the ID of the newly created schedule entry.
-pub fn create_schedule(conn: &mut MysqlConnection, new_schedule: NewSchedule) -> QueryResult<i32> {
-    diesel::insert_into(schedule::table)
-        .values(&new_schedule)
-        .execute(conn)?; // Execute the insert
-
-    get_last_insert_id(conn) // Use the helper function
-}
-
-/// Finds a schedule entry by its ID.
-pub fn get_schedule_by_id(conn: &mut MysqlConnection, schedule_id: i32) -> QueryResult<Schedule> {
-    schedule::table.find(schedule_id).first(conn)
-}
-
-/// Gets all schedule entries.
-pub fn get_all_schedules(conn: &mut MysqlConnection) -> QueryResult<Vec<Schedule>> {
-    schedule::table.load::<Schedule>(conn)
-}
-
-/// Gets all schedules with movie and room details.
 pub fn get_schedules_with_details(
     conn: &mut MysqlConnection,
 ) -> QueryResult<Vec<(Schedule, Movie, Room)>> {
@@ -130,10 +44,6 @@ pub fn get_schedules_with_details(
         .load::<(Schedule, Movie, Room)>(conn)
 }
 
-// --- CRUD Functions for Reservations ---
-
-/// Creates a new reservation.
-/// Returns the ID of the newly created reservation.
 pub fn create_reservation(
     conn: &mut MysqlConnection,
     new_reservation: NewReservation,
@@ -141,33 +51,29 @@ pub fn create_reservation(
     conn.transaction(|conn| {
         diesel::insert_into(reservation::table)
             .values(&new_reservation)
-            .execute(conn)?; // Execute the insert
+            .execute(conn)?;
 
         if check_if_capacity_exceeded(conn, new_reservation.schedule_id)? {
             return Err(diesel::result::Error::RollbackTransaction);
         }
 
-        get_last_insert_id(conn) // Use the helper function
+        Ok(0)
     })
 }
 
-/// Updates an existing reservation.
-/// Returns the updated reservation.
 pub fn update_reservation(
     conn: &mut MysqlConnection,
     reservation_id: i32,
-    changeset: ReservationChangeset, // Now accepts ReservationChangeset
+    changeset: ReservationChangeset,
 ) -> QueryResult<Reservation> {
     use crate::schema::reservation::dsl::*;
 
     conn.transaction(|conn| {
         let rows_affected = diesel::update(reservation.find(reservation_id))
-            .set(&changeset) // Pass the changeset struct directly
-            .execute(conn)?; // Use execute and handle the result
+            .set(&changeset)
+            .execute(conn)?;
 
         if rows_affected == 0 {
-            // If no rows were affected, it means the reservation ID was not found.
-            // Return a Diesel error indicating no record found.
             Err(diesel::result::Error::NotFound)
         } else {
             if let Some(form_schedule_id) = changeset.schedule_id {
@@ -176,13 +82,11 @@ pub fn update_reservation(
                 }
             }
 
-            // If successful, fetch the updated reservation.
             reservation.find(reservation_id).first(conn)
         }
     })
 }
 
-/// Retrieves a single reservation by its ID.
 pub fn get_reservation_by_id(
     conn: &mut MysqlConnection,
     res_id: i32,
@@ -190,12 +94,6 @@ pub fn get_reservation_by_id(
     reservation::table.find(res_id).first(conn)
 }
 
-/// Retrieves all reservations.
-pub fn get_all_reservations(conn: &mut MysqlConnection) -> QueryResult<Vec<Reservation>> {
-    reservation::table.load::<Reservation>(conn)
-}
-
-/// Retrieves reservations made by a specific user.
 pub fn get_reservations_by_user_id(
     conn: &mut MysqlConnection,
     user_id_param: i32,
@@ -206,12 +104,10 @@ pub fn get_reservations_by_user_id(
         .load::<Reservation>(conn)
 }
 
-/// Retrieves all reservations with full details (who made it, movie, room, schedule).
 pub fn get_reservations_with_details(
     conn: &mut PooledConnection<ConnectionManager<MysqlConnection>>,
     user_id: i32,
 ) -> QueryResult<Vec<ReservationDetail>> {
-    // Use a raw SQL query with explicit aliases for QueryableByName
     diesel::sql_query(
         "SELECT
             r.id as reservation_id,
@@ -230,7 +126,6 @@ pub fn get_reservations_with_details(
         .load::<ReservationDetail>(conn)
 }
 
-/// Counts the number of existing reservations for a given schedule.
 pub fn get_reservations_count_for_schedule(
     conn: &mut MysqlConnection,
     schedule_id_param: i32,
@@ -242,7 +137,6 @@ pub fn get_reservations_count_for_schedule(
         .get_result(conn)
 }
 
-/// Checks if user can delete this reservation
 pub fn check_if_users_reservation(conn: &mut MysqlConnection, res_ids: Vec<i32>, user_id_value: i32) -> QueryResult<bool> {
     use crate::schema::reservation::dsl::*;
 
@@ -256,15 +150,11 @@ pub fn check_if_users_reservation(conn: &mut MysqlConnection, res_ids: Vec<i32>,
     Ok(result == res_ids_len as i64)
 }
 
-/// Deletes a single reservation by its ID.
-/// Returns the number of deleted rows (should be 1 if successful).
 pub fn delete_reservation(conn: &mut MysqlConnection, res_id: i32) -> QueryResult<usize> {
     use crate::schema::reservation::dsl::*;
     diesel::delete(reservation.filter(id.eq(res_id))).execute(conn)
 }
 
-/// Deletes multiple reservations by a list of IDs.
-/// Returns the number of deleted rows.
 pub fn delete_multiple_reservations(
     conn: &mut MysqlConnection,
     res_ids: Vec<i32>
@@ -296,7 +186,7 @@ pub fn check_if_capacity_exceeded(conn: &mut MysqlConnection, schedule_id: i32) 
         .into_iter()
         .next()
         .map(|r| r.is_exceeded)
-        .unwrap_or(false); // If no rows, means schedule_id doesn't exist or no reservations, so not exceeded.
+        .unwrap_or(false);
 
     Ok(result)
 }

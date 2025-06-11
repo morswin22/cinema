@@ -36,7 +36,6 @@ pub async fn list_reservations_handler(RequiredUser(user): RequiredUser, pool: S
     list_reservations(RequiredUser(user), pool, None)
 }
 
-/// Handler to list reservations, typically for HTMX partial updates.
 pub fn list_reservations(RequiredUser(user): RequiredUser, State(pool): State<Arc<MysqlPool>>, error_message: Option<String>) -> Result<Html<String>, AppError> {
     let mut conn = pool.get().map_err(|e| AppError::PoolError(e.to_string()))?;
 
@@ -49,7 +48,6 @@ pub fn list_reservations(RequiredUser(user): RequiredUser, State(pool): State<Ar
     Ok(Html(template.render()?))
 }
 
-/// Handler to show the form for creating a new reservation.
 pub async fn show_create_reservation_form(RequiredUser(user): RequiredUser, State(pool): State<Arc<MysqlPool>>) -> Result<Html<String>, AppError> {
     let mut conn = pool.get().map_err(|e| AppError::PoolError(e.to_string()))?;
 
@@ -75,7 +73,6 @@ pub async fn show_create_reservation_form(RequiredUser(user): RequiredUser, Stat
     Ok(Html(template.render()?))
 }
 
-/// Handler to create a new reservation from form data.
 pub async fn create_reservation(
     RequiredUser(user): RequiredUser,
     State(pool): State<Arc<MysqlPool>>,
@@ -114,7 +111,6 @@ pub async fn create_reservation(
     }
 }
 
-/// Handler to show the form for updating an existing reservation.
 pub async fn show_update_reservation_form(
     RequiredUser(user): RequiredUser,
     Path(id): Path<i32>,
@@ -134,17 +130,15 @@ pub async fn show_update_reservation_form(
         let mut current_reservations_count = db::get_reservations_count_for_schedule(&mut conn, schedule.id)
             .map_err(AppError::Database)?;
 
-        // If the reservation being updated is for this schedule, decrement the count by 1
-        // as this slot is effectively "freed up" for the purpose of checking new capacity.
         if reservation.schedule_id == schedule.id {
             current_reservations_count = current_reservations_count.saturating_sub(1);
         }
 
         let available_seats = room.capacity - current_reservations_count as i32;
         schedules_display_info.push(ScheduleDisplayInfo {
-            schedule: schedule.clone(), // Clone to avoid move error
-            movie: movie.clone(),       // Clone to avoid move error
-            room: room.clone(),         // Clone to avoid move error
+            schedule: schedule.clone(),
+            movie: movie.clone(),
+            room: room.clone(),
             available_seats,
         });
     }
@@ -156,7 +150,6 @@ pub async fn show_update_reservation_form(
     Ok(Html(template.render()?))
 }
 
-/// Handler to update an existing reservation from form data.
 pub async fn update_reservation(
     RequiredUser(user): RequiredUser,
     Path(id): Path<i32>,
@@ -164,9 +157,6 @@ pub async fn update_reservation(
     Form(form): Form<UpdateReservationForm>,
 ) -> Result<Response, AppError> {
     let mut conn = pool.get().map_err(|e| AppError::PoolError(e.to_string()))?;
-
-    let current_reservation = db::get_reservation_by_id(&mut conn, id)
-        .map_err(AppError::Database)?;
 
     let changeset = ReservationChangeset {
         user_id: Some(user.id),
@@ -192,7 +182,6 @@ pub async fn update_reservation(
     }
 }
 
-/// Handler to delete a single reservation.
 pub async fn delete_reservation(
     RequiredUser(user): RequiredUser,
     Path(id): Path<i32>,
@@ -214,7 +203,7 @@ pub async fn delete_reservation(
         }
     }
 }
-/// Handler to delete multiple reservations from form data.
+
 pub async fn delete_multiple_reservations(
     RequiredUser(user): RequiredUser,
     State(pool): State<Arc<MysqlPool>>,

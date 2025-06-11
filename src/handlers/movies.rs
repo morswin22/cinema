@@ -6,9 +6,8 @@ use std::sync::Arc;
 use askama::Template;
 
 use crate::db::MysqlPool;
-use crate::models::Movie;
-use crate::{db, AppError}; // Import db functions and AppError
-use crate::templates_structs::{MoviesTemplate, MovieTemplate}; // Import template structs
+use crate::{db, AppError};
+use crate::templates_structs::{MoviesTemplate, MovieTemplate};
 
 pub async fn movies_handler(
     State(pool): State<Arc<MysqlPool>>,

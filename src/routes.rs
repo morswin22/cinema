@@ -3,29 +3,23 @@ use axum::{
     Router,
 };
 use std::sync::Arc;
-use axum::extract::State;
 use crate::db::MysqlPool;
-use crate::handlers::{movies, reservations}; // Import handler modules
-use crate::handlers; // Import handlers module to access index_handler
+use crate::handlers::{movies, reservations};
+use crate::handlers;
 
-/// Creates and returns the main application router.
-// The app_router function now returns a Router that is generic over the state type S.
-// The actual state (Arc<MysqlPool>) will be applied in main.rs.
 pub fn app_router(pool: Arc<MysqlPool>) -> Router {
     Router::new()
         .route("/", get(handlers::index_handler))
         .nest("/movies", movie_routes())
         .nest("/reservations", reservation_routes())
         .merge(auth_routes())
-        .with_state(pool) // Apply the shared pool to the top-level router
+        .with_state(pool)
 }
 
-/// Defines routes related to movies.
-// movie_routes now explicitly returns Router<Arc<MysqlPool>>
 fn movie_routes() -> Router<Arc<MysqlPool>> {
     Router::new()
         .route("/", get(movies::movies_handler))
-        .route("/{movie_id}", get(movies::movie_handler)) // Corrected path parameter syntax
+        .route("/{movie_id}", get(movies::movie_handler))
 }
 
 fn auth_routes() -> Router<Arc<MysqlPool>> {
@@ -35,8 +29,6 @@ fn auth_routes() -> Router<Arc<MysqlPool>> {
         .route("/logout", get(handlers::auth::logout))
 }
 
-/// Defines routes related to reservations.
-// reservation_routes now explicitly returns Router<Arc<MysqlPool>>
 fn reservation_routes() -> Router<Arc<MysqlPool>> {
     Router::new()
         .route("/", get(reservations::list_reservations_handler))

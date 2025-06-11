@@ -1,9 +1,6 @@
 use askama::Template;
-use chrono::NaiveDateTime;
 use crate::models::{Movie, ReservationDetail, Reservation, ScheduleDisplayInfo, User};
-use crate::AppError; // Import AppError
 
-// Define the templates
 #[derive(Template)]
 #[template(path = "index.html")]
 pub struct IndexTemplate {
